@@ -87,11 +87,13 @@ flowchart LR
 Start every new search with the 7-day window and retain its results in browser session storage. Request the 30-day window only when selected, merging its discoveries with cached live weekly matches before deduplicating and keeping the top 20 by content fit. Starting a new search clears both caches. Keep sample and live data separate.
 
 1. **Read the creator's content**: Extract each pasted post link (parallel). If none are given, use the niches picked in onboarding.
-2. **Profile**: the Inference Router turns the text into niche, topics, audience and follower band. Without an LLM, the picked niches stand in.
-3. **Find brands**: three Search calls in parallel with week/month freshness: sponsorships, creator programs, and adjacent product categories. Successful lanes are retained if another fails. When Router access is unavailable, one structured Research call provides alternative discovery.
+2. **Profile**: use picked niches directly if no post text could be read. Otherwise, the Inference Router turns the text into niche, topics and audience. Without an LLM, the picked niches stand in.
+3. **Find brands**: three Search calls in parallel with week/month freshness: sponsorships, creator programs, and adjacent product categories. Successful lanes are retained if another fails. When Router access is unavailable, lite Research provides alternative discovery using JSON text and returned source URLs; standard structured Research is the backup if no supported candidates survive.
 4. **Merge and rank**: one shared Inference Router call identifies brands, assigns content-fit scores, and attaches supporting result indexes. Merge duplicate names/domains and their evidence before capping at 20 brands. Return fewer when evidence is insufficient.
 5. **Spend and hiring now**: return the feed without Answer calls. Opening a live brand calls `POST /api/brand-research` for that brand only. Cache completed details in the browser session, preserve discovery sources, distinguish unchecked/failed states, and allow retries. Sample brands never trigger live checks.
 6. **Fit score**: the shared model's content-fit score, clamped to 0–100. Fit and feed order stay stable when pay and campaign details arrive.
+
+Successful feed requests use a bounded 10-minute process-local server cache keyed by creator inputs and window. Identical in-flight requests share one run. Manual refresh bypasses cached responses, and failed/sample runs are not stored in this cache.
 
 ### Trust Score pipeline (`POST /api/trust-score`)
 

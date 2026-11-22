@@ -216,6 +216,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               niches: state.profile.niches,
               window,
               country: COUNTRY[state.profile.country],
+              refresh: force,
             }),
           });
           if (!res.ok) throw new Error(`Brand Match failed (${res.status})`);
