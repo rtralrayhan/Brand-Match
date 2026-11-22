@@ -50,6 +50,7 @@ const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "
 
 interface Store extends State {
   setProfile: (p: Partial<Profile>) => void;
+  restartSearch: () => void;
   loadMatches: (window: 7 | 30, force?: boolean) => Promise<void>;
   matchLoading: boolean;
   matchError: string | null;
@@ -71,6 +72,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [matchError, setMatchError] = useState<string | null>(null);
   const [checking, setChecking] = useState<Record<string, boolean>>({});
   const inflight = useRef<Partial<Record<string, Promise<unknown>>>>({});
+  const searchVersion = useRef(0);
 
   useEffect(() => {
     try {
@@ -89,10 +91,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const setProfile = useCallback((p: Partial<Profile>) => setState((s) => ({ ...s, profile: { ...s.profile, ...p } })), []);
 
+  const restartSearch = useCallback(() => {
+    searchVersion.current += 1;
+    setState((s) => ({ ...s, matches: {} }));
+    setMatchError(null);
+    setMatchLoading(false);
+  }, []);
+
   const loadMatches = useCallback(
     async (window: 7 | 30, force = false) => {
       if (!force && state.matches[window]) return;
-      const key = `match-${window}`;
+      const version = searchVersion.current;
+      const key = `match-${version}-${window}`;
       if (inflight.current[key]) return void (await inflight.current[key]);
       setMatchLoading(true);
       setMatchError(null);
@@ -110,11 +120,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           });
           if (!res.ok) throw new Error(`Brand Match failed (${res.status})`);
           const data = (await res.json()) as MatchResult;
-          setState((s) => ({ ...s, matches: { ...s.matches, [window]: data } }));
+          if (version === searchVersion.current) {
+            setState((s) => ({ ...s, matches: { ...s.matches, [window]: data } }));
+          }
         } catch (err) {
-          setMatchError(err instanceof Error ? err.message : "Something went wrong");
+          if (version === searchVersion.current) {
+            setMatchError(err instanceof Error ? err.message : "Something went wrong");
+          }
         } finally {
-          setMatchLoading(false);
+          if (version === searchVersion.current) setMatchLoading(false);
           delete inflight.current[key];
         }
       })();
@@ -164,7 +178,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ ...state, setProfile, loadMatches, matchLoading, matchError, checkEmail, checking, addEmail, toggleSave, report, reset }}
+      value={{ ...state, setProfile, restartSearch, loadMatches, matchLoading, matchError, checkEmail, checking, addEmail, toggleSave, report, reset }}
     >
       {hydrated ? children : null}
     </Ctx.Provider>
