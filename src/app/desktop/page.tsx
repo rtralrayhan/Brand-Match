@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { BrowserFrame, Eyebrow, PhoneFrame, SectionHeading } from "@/components/desktop/landing";
-import { Icon, Logo, PrimaryLink, ScoreRing, Segmented } from "@/components/desktop/ui";
+import { Icon, Logo, PrimaryLink, ScoreRing } from "@/components/desktop/ui";
 
 const orb = { background: "radial-gradient(circle at 58% 38%, #FFD27A 0%, #FF8A3D 30%, #FF4D6D 55%, rgba(255,120,150,0.35) 68%, rgba(255,255,255,0) 74%)" };
 const violetWash = { background: "radial-gradient(110% 80% at 100% 0%, rgba(124,92,230,0.16) 0%, rgba(255,255,255,0) 60%), #fff" };
@@ -135,62 +134,56 @@ const BEFORE_AFTER = [
 ];
 
 /**
- * Pricing. Prices are in USD per month; `yearly` is the per-month price when billed yearly.
- * Edit this list to change the plans: the cards and the table below read from it.
+ * Pricing, from the pitch deck: Free, Pro $12 a month, Manager $49 a month for up to 10 creators.
+ * Prices are in USD per month. Edit this list to change the plans: the cards and the table below read from it.
  */
 const PLANS = [
   {
     id: "free",
     name: "Free",
-    blurb: "Try Vetted and check the odd offer.",
-    monthly: 0,
-    yearly: 0,
+    blurb: "Check the odd offer before you reply.",
+    price: 0,
+    period: "forever",
+    note: "No card needed",
     cta: "Start free",
     href: "/signup",
-    features: ["5 Trust Score checks a month", "Brand Match on your last 30 days, top 3 brands", "3 pitch drafts a month", "Paste emails to check them"],
+    features: ["5 Trust Score checks a month", "Sources on every finding"],
   },
   {
-    id: "creator",
-    name: "Creator",
+    id: "pro",
+    name: "Pro",
     blurb: "For creators who get brand emails every week.",
-    monthly: 12,
-    yearly: 9,
-    cta: "Start 14-day free trial",
-    href: "/signup?plan=creator",
+    price: 12,
+    period: "per month",
+    note: "Billed monthly",
+    cta: "Get Pro",
+    href: "/signup?plan=pro",
     popular: true,
-    features: [
-      "Unlimited Trust Score checks",
-      "Connect Gmail: every brand email scored (Outlook soon)",
-      "Full Brand Match, last 7 or 30 days",
-      "Pay ranges and hiring status for every brand",
-      "Unlimited pitch drafts",
-      "Creator videos and saved brands",
-    ],
+    features: ["Unlimited Trust Score", "Brand Match with spend ranges", "Inbox sync"],
   },
   {
-    id: "agency",
-    name: "Agency",
-    blurb: "For managers vetting deals for several creators.",
-    monthly: 39,
-    yearly: 29,
-    cta: "Start 14-day free trial",
-    href: "/signup?plan=agency",
-    features: ["Everything in Creator", "Up to 10 creator profiles", "One inbox for all your creators' offers", "Share a Trust Score report with a link", "Export findings and sources as PDF", "Priority support"],
+    id: "manager",
+    name: "Manager",
+    blurb: "For managers vetting deals for their roster.",
+    price: 49,
+    period: "per month",
+    note: "Up to 10 creators",
+    cta: "Get Manager",
+    href: "/signup?plan=manager",
+    features: ["Everything in Pro", "Up to 10 creators", "One inbox for the roster"],
   },
 ];
 
 const PLAN_TABLE: Array<[string, string, string, string]> = [
   ["Trust Score checks", "5 a month", "Unlimited", "Unlimited"],
-  ["Inbox connection", "Paste only", "Gmail (Outlook soon)", "Shared inbox"],
-  ["Brand Match window", "30 days", "7 or 30 days", "7 or 30 days"],
-  ["Brands per match", "Top 3", "All", "All"],
-  ["Pitch drafts", "3 a month", "Unlimited", "Unlimited"],
-  ["Creator profiles", "1", "1", "Up to 10"],
-  ["Shareable reports", "—", "—", "Yes"],
+  ["Sources on every finding", "Yes", "Yes", "Yes"],
+  ["Brand Match with spend ranges", "—", "Yes", "Yes"],
+  ["Inbox sync", "—", "Yes", "Yes"],
+  ["Creators", "1", "1", "Up to 10"],
+  ["One inbox for the roster", "—", "—", "Yes"],
 ];
 
 function Pricing() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
   return (
     <section id="pricing" className="scroll-mt-16 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-24">
@@ -200,71 +193,55 @@ function Pricing() {
             eyebrow="Pricing"
             title={
               <>
-                Start free. Upgrade when the <b>offers</b> pile up.
+                Creators pay, <b>starting free</b>
               </>
             }
-            sub="Every plan includes sources on every finding, read-only access and the five Trust Score checks."
+            sub="Every plan includes sources on every finding and read-only access to your inbox."
           />
-          <div className="flex items-center gap-3">
-            <Segmented
-              value={billing}
-              onChange={setBilling}
-              options={[
-                { value: "monthly", label: "Monthly" },
-                { value: "yearly", label: "Yearly" },
-              ]}
-            />
-            <span className="rounded-full bg-ok-bg px-2.5 py-1 text-xs font-semibold text-ok">Save 25% yearly</span>
-          </div>
         </div>
 
         <div className="grid items-stretch gap-5 lg:grid-cols-3">
-          {PLANS.map((p) => {
-            const price = billing === "yearly" ? p.yearly : p.monthly;
-            return (
-              <div
-                key={p.id}
-                className={`relative flex flex-col gap-6 rounded-[28px] border p-7 ${
-                  p.popular ? "border-ink bg-ink text-white shadow-[0_30px_70px_rgba(24,24,27,0.25)] lg:-my-3 lg:py-10" : "border-line bg-white"
+          {PLANS.map((p) => (
+            <div
+              key={p.id}
+              className={`relative flex flex-col gap-6 rounded-[28px] border p-7 ${
+                p.popular ? "border-ink bg-ink text-white shadow-[0_30px_70px_rgba(24,24,27,0.25)] lg:-my-3 lg:py-10" : "border-line bg-white"
+              }`}
+            >
+              {p.popular && (
+                <span className="absolute -top-3 left-7 rounded-full px-3 py-1 text-xs font-semibold text-ink" style={{ background: "linear-gradient(90deg, #FFD27A, #FF8A3D)" }}>
+                  Most popular
+                </span>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-lg font-semibold">{p.name}</span>
+                <span className={`text-sm ${p.popular ? "text-white/70" : "text-muted"}`}>{p.blurb}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-[44px] font-semibold leading-none tracking-[-0.03em]">${p.price}</span>
+                  <span className={`text-sm ${p.popular ? "text-white/70" : "text-muted"}`}>{p.period}</span>
+                </span>
+                <span className={`min-h-4 text-xs ${p.popular ? "text-white/60" : "text-muted"}`}>{p.note}</span>
+              </div>
+              <Link
+                href={p.href}
+                className={`flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-semibold ${
+                  p.popular ? "bg-white text-ink hover:bg-soft" : "border border-line-2 bg-white hover:bg-soft"
                 }`}
               >
-                {p.popular && (
-                  <span className="absolute -top-3 left-7 rounded-full px-3 py-1 text-xs font-semibold text-ink" style={{ background: "linear-gradient(90deg, #FFD27A, #FF8A3D)" }}>
-                    Most popular
-                  </span>
-                )}
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-lg font-semibold">{p.name}</span>
-                  <span className={`text-sm ${p.popular ? "text-white/70" : "text-muted"}`}>{p.blurb}</span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="flex items-baseline gap-1.5">
-                    <span className="text-[44px] font-semibold leading-none tracking-[-0.03em]">${price}</span>
-                    <span className={`text-sm ${p.popular ? "text-white/70" : "text-muted"}`}>{price ? "/ month" : "forever"}</span>
-                  </span>
-                  <span className={`min-h-4 text-xs ${p.popular ? "text-white/60" : "text-muted"}`}>
-                    {price ? (billing === "yearly" ? `Billed $${p.yearly * 12} a year` : "Billed monthly") : "No card needed"}
-                  </span>
-                </div>
-                <Link
-                  href={p.href}
-                  className={`flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-semibold ${
-                    p.popular ? "bg-white text-ink hover:bg-soft" : "border border-line-2 bg-white hover:bg-soft"
-                  }`}
-                >
-                  {p.cta}
-                </Link>
-                <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                  {p.features.map((f) => (
-                    <li key={f} className={`flex items-start gap-2.5 text-sm ${p.popular ? "text-white/90" : "text-ink-3"}`}>
-                      <span className="mt-0.5">{Icon.tick({ size: 15, color: p.popular ? "#7BE0A8" : "#18794E" })}</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+                {p.cta}
+              </Link>
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {p.features.map((f) => (
+                  <li key={f} className={`flex items-start gap-2.5 text-sm ${p.popular ? "text-white/90" : "text-ink-3"}`}>
+                    <span className="mt-0.5">{Icon.tick({ size: 15, color: p.popular ? "#7BE0A8" : "#18794E" })}</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
         {/* Compare plans */}
@@ -296,7 +273,7 @@ function Pricing() {
           </table>
         </div>
 
-        <p className="m-0 text-center text-[13px] text-muted">Prices in USD. Cancel any time. Paid plans start with a 14-day free trial.</p>
+        <p className="m-0 text-center text-[13px] text-muted">Prices in USD per month. Cancel any time.</p>
       </div>
     </section>
   );
@@ -305,11 +282,11 @@ function Pricing() {
 const FAQS = [
   {
     q: "Is Vetted free?",
-    a: "Yes, there's a free plan with 5 Trust Score checks a month and your top 3 brand matches, no card needed. Paid plans add unlimited checks, inbox connection and full Brand Match. See Pricing above.",
+    a: "Yes. The free plan includes 5 Trust Score checks a month, with sources on every finding, and needs no card. Pro ($12 a month) adds unlimited Trust Score, Brand Match with spend ranges and inbox sync. Manager ($49 a month) covers up to 10 creators with one inbox for the roster.",
   },
   {
     q: "Can I cancel or switch plans?",
-    a: "Yes. Paid plans start with a 14-day free trial, and you can cancel, upgrade or downgrade any time from Settings. Yearly plans cost 25% less than paying monthly.",
+    a: "Yes. Paid plans are billed monthly, and you can cancel, upgrade or downgrade any time.",
   },
   {
     q: "Where does the data come from?",

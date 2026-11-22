@@ -13,6 +13,12 @@ export function useMatches() {
     store.loadMatches(w);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [w]);
+  // Once the feed is in, look up creator videos for the cards.
+  const run = store.matches[w];
+  useEffect(() => {
+    if (run?.mode === "live") store.loadCardVideos(w);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [w, run?.generatedAt, run?.mode]);
   return { ...store, window: w, result: store.matches[w] as MatchResult | undefined };
 }
 

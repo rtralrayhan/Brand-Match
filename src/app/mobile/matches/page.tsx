@@ -6,8 +6,7 @@ import { useStore } from "@/lib/store";
 import { MatchesHeader, MatchLoading, Notes, useMatches, WindowToggle } from "@/components/mobile/matches";
 import type { Brand } from "@/lib/types";
 import { campaignLabel } from "@/lib/brandResearchState";
-import { creatorVideos } from "@/lib/videos";
-import { VideoStrip } from "@/components/videos";
+import { CardVideos } from "@/components/videos";
 
 function payShort(b: Brand) {
   if (b.spend) return b.spend.text;
@@ -16,8 +15,7 @@ function payShort(b: Brand) {
   return "No data yet";
 }
 
-function MatchCard({ b, top }: { b: Brand; top: boolean }) {
-  const videos = creatorVideos(b);
+function MatchCard({ b, top, window }: { b: Brand; top: boolean; window: 7 | 30 }) {
   const hasPay = !!b.spend;
   return (
     <Link
@@ -39,19 +37,7 @@ function MatchCard({ b, top }: { b: Brand; top: boolean }) {
         </span>
       </div>
 
-      {videos.length > 0 ? (
-        <div className="flex flex-col gap-1.5">
-          <VideoStrip videos={videos} wash={b.wash} />
-          <span className="text-xs text-muted">
-            {videos.length} creator video{videos.length === 1 ? "" : "s"} for them
-          </span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 rounded-[14px] border border-dashed border-line-2 px-3 py-2.5 text-xs text-muted">
-          {Icon.play({ size: 15, color: "#6B6B74" })}
-          {b.researchStatus === "unresearched" ? "Open to look for creator videos" : "No public creator videos found yet"}
-        </div>
-      )}
+      <CardVideos brand={b} window={window} />
 
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-0.5 rounded-[14px] bg-soft/80 px-3 py-2.5">
@@ -130,7 +116,7 @@ export default function Feed() {
 
             <div className="flex flex-col gap-3.5">
               {result.brands.map((b, i) => (
-                <MatchCard key={b.id} b={b} top={i === 0} />
+                <MatchCard key={b.id} b={b} top={i === 0} window={window} />
               ))}
             </div>
           </>

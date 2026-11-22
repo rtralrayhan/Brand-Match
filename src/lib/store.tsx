@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { SAMPLE_EMAILS } from "./sampleEmails";
 import { brandResearchKey, RESEARCH_FAILED, updateBrandResearch } from "./brandResearchState";
 import { mergeCachedMatches } from "./matchResults";
-import type { BrandResearch, EmailInput, MatchResult, TrustResult } from "./types";
+import type { BrandResearch, CreatorVideo, EmailInput, MatchResult, TrustResult } from "./types";
 
 export interface Profile {
   name: string;
@@ -25,7 +25,12 @@ interface State {
   emails: EmailInput[];
   saved: string[];
   reported: string[];
+  /** Creator videos found for the cards on the matches feed, keyed by cardVideosKey(). */
+  cardVideos: Record<string, CreatorVideo[]>;
 }
+
+/** Key for one brand's card videos in one feed run. */
+export const cardVideosKey = (result: Pick<MatchResult, "window" | "generatedAt">, id: string) => `videos:${result.window}:${result.generatedAt}:${id}`;
 
 const initial: State = {
   profile: {
@@ -44,6 +49,7 @@ const initial: State = {
   emails: SAMPLE_EMAILS,
   saved: [],
   reported: [],
+  cardVideos: {},
 };
 
 const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "United Kingdom": "GB", India: "IN", Bangladesh: "BD" };
@@ -70,6 +76,9 @@ interface Store extends State {
   matchError: string | null;
   loadBrandResearch: (window: 7 | 30, id: string) => Promise<void>;
   researchingBrands: Record<string, boolean>;
+  /** Looks up creator videos for every card in the feed that has none yet. */
+  loadCardVideos: (window: 7 | 30) => Promise<void>;
+  cardVideosLoading: boolean;
   checkEmail: (e: EmailInput, force?: boolean) => Promise<TrustResult | null>;
   checking: Record<string, boolean>;
   addEmail: (e: EmailInput) => void;
@@ -89,6 +98,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [matchError, setMatchError] = useState<string | null>(null);
   const [researchingBrands, setResearchingBrands] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState<Record<string, boolean>>({});
+  const [cardVideosLoading, setCardVideosLoading] = useState(false);
   const inflight = useRef<Partial<Record<string, Promise<unknown>>>>({});
   const searchVersion = useRef(0);
 
@@ -191,7 +201,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const restartSearch = useCallback(() => {
     searchVersion.current += 1;
-    setState((s) => ({ ...s, profile: { ...s.profile, window: 7 }, matches: {} }));
+    setState((s) => ({ ...s, profile: { ...s.profile, window: 7 }, matches: {}, cardVideos: {} }));
     setMatchError(null);
     setLoadingMatches({});
   }, []);
@@ -275,6 +285,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [state.matches],
   );
 
+  const loadCardVideos = useCallback(
+    async (window: 7 | 30) => {
+      const result = state.matches[window];
+      if (!result || result.mode !== "live") return;
+      const missing = result.brands.filter((b) => !b.videos?.length && !(cardVideosKey(result, b.id) in state.cardVideos));
+      if (!missing.length) return;
+      const key = `card-videos:${window}:${result.generatedAt}`;
+      if (inflight.current[key]) return void (await inflight.current[key]);
+      setCardVideosLoading(true);
+      const p = (async () => {
+        let found: Record<string, CreatorVideo[]> = {};
+        try {
+          const res = await fetch("/api/brand-videos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ window, brands: missing.slice(0, 20).map((b) => ({ id: b.id, name: b.name })) }),
+          });
+          if (res.ok) found = ((await res.json()) as { videos: Record<string, CreatorVideo[]> }).videos ?? {};
+        } catch {}
+        // Brands without an answer are stored as empty, so the cards stop waiting and we don't ask again.
+        setState((s) => ({
+          ...s,
+          cardVideos: { ...s.cardVideos, ...Object.fromEntries(missing.map((b) => [cardVideosKey(result, b.id), found[b.id] ?? []])) },
+        }));
+        setCardVideosLoading(false);
+        delete inflight.current[key];
+      })();
+      inflight.current[key] = p;
+      await p;
+    },
+    [state.matches, state.cardVideos],
+  );
+
   const checkEmail = useCallback(
     async (e: EmailInput, force = false) => {
       if (!force && state.trust[e.id]) return state.trust[e.id];
@@ -333,6 +376,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         matchError,
         loadBrandResearch,
         researchingBrands,
+        loadCardVideos,
+        cardVideosLoading,
         checkEmail,
         checking,
         addEmail,

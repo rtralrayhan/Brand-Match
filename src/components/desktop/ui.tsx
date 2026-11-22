@@ -13,7 +13,12 @@ const svg = (paths: React.ReactNode, { size = 18, color = "currentColor", width 
 );
 
 export const Icon = {
-  logo: (p: IconProps = {}) => svg(<path d="M4 6l8 13 8-13" />, { width: 2.6, ...p }),
+  /** The Vetted check mark (from the pitch deck), drawn to fill its square tile: render it at the tile's size. */
+  logo: ({ size = 30, color = "#F1EFE7", className }: IconProps = {}) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path d="M6.62 9.70L9.97 9.70L10.99 11.34L9.28 14.19ZM14.54 6.75L17.38 8.33L12.38 17.25L10.99 17.25L9.73 15.04Z" fill={color} stroke={color} strokeWidth={0.35} strokeLinejoin="round" />
+    </svg>
+  ),
   back: (p: IconProps = {}) => svg(<path d="M15 5l-7 7 7 7" />, { width: 2.2, ...p }),
   arrow: (p: IconProps = {}) => svg(<path d="M5 12h14M13 6l6 6-6 6" />, { width: 2.2, ...p }),
   chevron: (p: IconProps = {}) => svg(<path d="M9 5l7 7-7 7" />, { width: 2.2, ...p }),
@@ -197,7 +202,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
 export function Logo({ href = "/" }: { href?: string }) {
   return (
     <Link href={href} className="flex items-center gap-2">
-      <span className="flex size-[30px] items-center justify-center rounded-[9px] bg-ink">{Icon.logo({ size: 16, color: "#fff" })}</span>
+      <span className="flex size-[30px] items-center justify-center rounded-[9px] bg-ink">{Icon.logo({ size: 30 })}</span>
       <span className="text-[17px] font-semibold tracking-[-0.01em]">Vetted</span>
     </Link>
   );

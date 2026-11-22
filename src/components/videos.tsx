@@ -1,5 +1,8 @@
-import type { CreatorVideo } from "@/lib/types";
-import { PLATFORM_LABEL, videoBackground } from "@/lib/videos";
+"use client";
+
+import { cardVideosKey, useStore } from "@/lib/store";
+import type { Brand, CreatorVideo } from "@/lib/types";
+import { creatorVideos, PLATFORM_LABEL, videoBackground } from "@/lib/videos";
 
 function PlayDot({ size }: { size: number }) {
   return (
@@ -57,6 +60,47 @@ export function VideoStrip({ videos, wash }: { videos: CreatorVideo[]; wash: str
           <span className="text-[10px] text-muted">videos</span>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The videos row on a brand card in the matches feed: found videos, a loading row while we look, or a note when there are none. */
+export function CardVideos({ brand, window }: { brand: Brand; window: 7 | 30 }) {
+  const { matches, cardVideos, cardVideosLoading } = useStore();
+  const result = matches[window];
+  const own = creatorVideos(brand);
+  const key = result ? cardVideosKey(result, brand.id) : "";
+  const videos = own.length ? own : (cardVideos[key] ?? []);
+
+  if (videos.length) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <VideoStrip videos={videos} wash={brand.wash} />
+        <span className="text-xs text-muted">
+          {videos.length} creator video{videos.length === 1 ? "" : "s"} for them
+        </span>
+      </div>
+    );
+  }
+  if (result?.mode === "live" && !(key in cardVideos) && cardVideosLoading) {
+    return (
+      <div className="flex flex-col gap-1.5" aria-busy="true">
+        <div className="grid grid-cols-4 gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton aspect-[3/4] rounded-xl" />
+          ))}
+        </div>
+        <span className="text-xs text-muted">Looking for creator videos…</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 rounded-[14px] border border-dashed border-line-2 px-3 py-2.5 text-xs text-muted">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6B6B74" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="5" />
+        <path d="M10 9l5 3-5 3z" />
+      </svg>
+      No public creator videos found yet
     </div>
   );
 }

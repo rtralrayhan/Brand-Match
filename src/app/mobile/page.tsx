@@ -9,7 +9,7 @@ export default function Welcome() {
     <div className="flex flex-1 flex-col">
       <div className="flex items-center justify-between px-[18px] pt-[22px]">
         <div className="flex items-center gap-2">
-          <div className="flex size-[30px] items-center justify-center rounded-[9px] bg-ink">{Icon.logo({ size: 16, color: "#fff" })}</div>
+          <div className="flex size-[30px] items-center justify-center rounded-[9px] bg-ink">{Icon.logo({ size: 30 })}</div>
           <span className="text-[17px] font-semibold tracking-[-0.01em]">Vetted</span>
         </div>
         <span className="rounded-full border border-line bg-white px-2.5 py-[5px] text-xs font-medium text-ink-4">Powered by You.com</span>

@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { BrandLogo, Icon } from "@/components/desktop/ui";
 import { MatchLoading, Notes, PageHeader, useMatches, WindowToggle } from "@/components/desktop/matches";
-import { VideoStrip } from "@/components/videos";
+import { CardVideos } from "@/components/videos";
 import { campaignLabel, payLabel } from "@/lib/brandResearchState";
 import type { Brand } from "@/lib/types";
-import { creatorVideos } from "@/lib/videos";
 
 function BrandLines({ b }: { b: Brand }) {
   return (
@@ -67,7 +66,6 @@ export default function Feed() {
               {result.brands.map((b, i) => {
                 const top = i === 0;
                 const isSaved = saved.includes(b.id);
-                const videos = creatorVideos(b);
                 return (
                   <div
                     key={b.id}
@@ -99,19 +97,7 @@ export default function Feed() {
                         <span className="text-[13px] text-muted">{b.category}</span>
                       </div>
                     </div>
-                    {videos.length > 0 ? (
-                      <div className="flex flex-col gap-1.5">
-                        <VideoStrip videos={videos} wash={b.wash} />
-                        <span className="text-xs text-muted">
-                          {videos.length} creator video{videos.length === 1 ? "" : "s"} for them
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 rounded-[14px] border border-dashed border-line-2 px-3 py-2.5 text-xs text-muted">
-                        {Icon.play({ size: 15, color: "#6B6B74" })}
-                        {b.researchStatus === "unresearched" ? "Open to look for creator videos" : "No public creator videos found yet"}
-                      </div>
-                    )}
+                    <CardVideos brand={b} window={window} />
                     <BrandLines b={b} />
                     {b.why[0] && <p className="m-0 line-clamp-2 text-[13px] leading-[1.45] text-ink-4">{b.why[0]}</p>}
                   </div>
