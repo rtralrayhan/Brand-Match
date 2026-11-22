@@ -16,6 +16,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={inter.variable}>
       <body>
+        {/* Rendered on the server so crawlers (including Google's OAuth review) always find these links. */}
+        <nav aria-label="Legal" className="sr-only">
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/terms">Terms of Service</a>
+        </nav>
         <StoreProvider>
           {/* Full screen on phones; a 390x844 phone frame on larger screens */}
           <div className="min-h-dvh sm:flex sm:items-center sm:justify-center sm:py-8">
