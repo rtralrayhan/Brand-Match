@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { BackButton, BrandLogo, Icon, SamplePill, SourceList } from "@/components/ui";
+import { BackButton, BrandLogo, formatDate, hostOf, Icon, SamplePill, SourceList } from "@/components/ui";
+import { VideoThumb } from "@/components/videos";
+import { creatorVideos, PLATFORM_LABEL } from "@/lib/videos";
 import { useStore } from "@/lib/store";
 import { brandResearchKey, campaignLabel } from "@/lib/brandResearchState";
 
@@ -39,6 +41,7 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
   }
 
   const isSaved = saved.includes(brand.id);
+  const videos = creatorVideos(brand);
 
   const draft = async () => {
     setDrafting(true);
@@ -86,6 +89,33 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
             </span>
           </div>
         </div>
+
+        {videos.length > 0 ? (
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-baseline justify-between px-1">
+              <span className="text-[15px] font-semibold">Videos creators made for them</span>
+              <span className="text-xs text-muted">
+                {videos.length} video{videos.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <div className="scroll-area -mx-[18px] flex gap-2.5 overflow-x-auto px-[18px] pb-1">
+              {videos.map((v, i) => (
+                <a key={v.url} href={v.url} target="_blank" rel="noreferrer" className="flex w-[136px] shrink-0 flex-col gap-1.5" aria-label={`Watch ${v.handle ?? "video"} on ${PLATFORM_LABEL[v.platform]}`}>
+                  <VideoThumb video={v} wash={brand.wash} index={i} large />
+                  <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink-2">{v.handle ?? v.title ?? hostOf(v.url)}</span>
+                  {(v.deal || v.date) && (
+                    <span className="-mt-1 truncate text-[11px] text-muted">{[v.deal, v.date && formatDate(v.date)].filter(Boolean).join(" · ")}</span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-[18px] border border-dashed border-line-2 bg-white px-3.5 py-3 text-[13px] text-muted">
+            {Icon.play({ size: 16, color: "#6B6B74" })}
+            {researching ? "Looking for creator videos…" : "No public creator videos found for this brand yet."}
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-2">
           <div className="flex flex-col gap-0.5 rounded-[18px] border border-line bg-white p-3">

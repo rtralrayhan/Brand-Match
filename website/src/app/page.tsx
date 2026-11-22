@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { BrowserFrame, Eyebrow, PhoneFrame, SectionHeading } from "@/components/landing";
 import { Icon, Logo, PrimaryLink, ScoreRing, Segmented } from "@/components/ui";
+import { MOBILE_APP_URL, WEB_APP_PATH } from "@/lib/links";
 
 const orb = { background: "radial-gradient(circle at 58% 38%, #FFD27A 0%, #FF8A3D 30%, #FF4D6D 55%, rgba(255,120,150,0.35) 68%, rgba(255,255,255,0) 74%)" };
 const violetWash = { background: "radial-gradient(110% 80% at 100% 0%, rgba(124,92,230,0.16) 0%, rgba(255,255,255,0) 60%), #fff" };
@@ -360,11 +361,21 @@ export default function Landing() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/matches" className="hidden h-10 items-center px-3 text-sm font-medium text-ink-3 hover:text-ink sm:flex">
+            <Link href="/matches" className="hidden h-10 items-center px-3 text-sm font-medium text-ink-3 hover:text-ink xl:flex">
               Sign in
             </Link>
-            <Link href="/signup" className="flex h-10 items-center rounded-full bg-ink px-4 text-sm font-semibold text-white hover:bg-ink-2">
-              Get started
+            <a
+              href={MOBILE_APP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-10 min-w-10 items-center justify-center gap-2 rounded-full border border-line-2 bg-white px-3 text-sm font-semibold text-ink hover:bg-soft sm:px-4"
+            >
+              {Icon.phone({ size: 17 })}
+              <span className="sr-only sm:not-sr-only">Mobile app</span>
+            </a>
+            <Link href={WEB_APP_PATH} className="flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-white hover:bg-ink-2">
+              {Icon.monitor({ size: 17, color: "#fff" })}
+              Web app
             </Link>
           </div>
         </div>
@@ -650,6 +661,22 @@ export default function Landing() {
                   </li>
                 ))}
               </ul>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <a
+                  href={MOBILE_APP_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-white hover:bg-ink-2"
+                >
+                  {Icon.phone({ size: 18, color: "#fff" })}
+                  Open the mobile app
+                </a>
+                <Link href={WEB_APP_PATH} className="flex h-12 items-center gap-2 rounded-full border border-line-2 bg-white px-6 text-[15px] font-semibold hover:bg-soft">
+                  {Icon.monitor({ size: 18 })}
+                  Use it on desktop
+                </Link>
+              </div>
+              <span className="text-[13px] text-muted">Open the mobile app on your phone, then add it to your home screen.</span>
             </div>
             <div className="flex items-end justify-center gap-6">
               <PhoneFrame src="/screenshots/mobile-matches.webp" alt="Brand matches on a phone" className="hidden w-[230px] translate-y-6 sm:block" />
@@ -714,15 +741,15 @@ export default function Landing() {
             <span className="max-w-xs text-sm leading-relaxed text-muted">Deals that fit. From people you trust. Brand Match and Trust Score for creators, powered by You.com.</span>
           </div>
           {[
-            { h: "Product", links: [["Brand Match", "/matches"], ["Trust Score", "/inbox"], ["Check an email", "/inbox/check"]] },
+            { h: "Product", links: [["Brand Match", "/matches"], ["Trust Score", "/inbox"], ["Check an email", "/inbox/check"], ["Mobile app", MOBILE_APP_URL], ["Web app", WEB_APP_PATH]] },
             { h: "Learn", links: [["How it works", "#how"], ["Who it's for", "#who"], ["Pricing", "#pricing"], ["FAQ", "#faq"]] },
             { h: "Account", links: [["Sign up", "/signup"], ["Sign in", "/matches"]] },
           ].map((col) => (
             <div key={col.h} className="flex flex-col gap-2.5 text-sm">
               <span className="font-semibold">{col.h}</span>
               {col.links.map(([label, href]) =>
-                href.startsWith("#") ? (
-                  <a key={label} href={href} className="text-muted hover:text-ink">
+                href.startsWith("#") || href.startsWith("http") ? (
+                  <a key={label} href={href} {...(href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})} className="text-muted hover:text-ink">
                     {label}
                   </a>
                 ) : (
