@@ -15,8 +15,22 @@ function parseSpend(text: string): Spend | null {
   return { min, max, text: min === max ? fmt(min) : `${fmt(min)} to ${fmt(max)}` };
 }
 
-/** Sponsored TikToks, Reels and YouTube videos creators posted for the brand. Never fails the research. */
-async function findCreatorVideos(name: string, window: 7 | 30): Promise<CreatorVideo[]> {
+const VIDEO_TTL = 30 * 60 * 1000;
+const videoCache = new Map<string, { at: number; videos: Promise<CreatorVideo[]> }>();
+
+/** Sponsored TikToks, Reels and YouTube videos creators posted for the brand. Cached for 30 minutes per brand and window. */
+export function findCreatorVideos(name: string, window: 7 | 30): Promise<CreatorVideo[]> {
+  const key = `${window}:${name.toLowerCase()}`;
+  const hit = videoCache.get(key);
+  if (hit && Date.now() - hit.at < VIDEO_TTL) return hit.videos;
+  const videos = searchCreatorVideos(name, window);
+  videoCache.set(key, { at: Date.now(), videos });
+  if (videoCache.size > 500) videoCache.delete(videoCache.keys().next().value!);
+  return videos;
+}
+
+/** One Search call; never throws (a failed search reads as no videos). */
+async function searchCreatorVideos(name: string, window: 7 | 30): Promise<CreatorVideo[]> {
   const results = await safe(
     "creator-videos",
     search(`"${name}" sponsored OR #ad OR "paid partnership" (site:tiktok.com OR site:instagram.com OR site:youtube.com)`, {
