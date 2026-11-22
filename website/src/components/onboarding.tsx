@@ -12,7 +12,7 @@ export function StepTitle({ children, sub }: { children: React.ReactNode; sub: s
   );
 }
 
-export function StepFooter({ back, next, nextLabel, skip }: { back?: string; next: string; nextLabel: string; skip?: string }) {
+export function StepFooter({ back, next, nextLabel, skip, blocked, onNext }: { back?: string; next: string; nextLabel: string; skip?: string; blocked?: string; onNext?: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 border-t border-line pt-6">
       {back ? (
@@ -24,13 +24,19 @@ export function StepFooter({ back, next, nextLabel, skip }: { back?: string; nex
       )}
       <div className="flex items-center gap-2">
         {skip && (
-          <Link href={skip} className="flex h-12 items-center px-4 text-sm font-medium text-ink-3 hover:text-ink">
+          <Link href={skip} onClick={onNext} className="flex h-12 items-center px-4 text-sm font-medium text-ink-3 hover:text-ink">
             Skip for now
           </Link>
         )}
-        <Link href={next} className="flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-white hover:bg-ink-2">
-          {nextLabel} {Icon.arrow({ color: "#fff" })}
-        </Link>
+        {blocked ? (
+          <span aria-disabled="true" className="flex h-12 cursor-not-allowed items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-white opacity-45">
+            {blocked}
+          </span>
+        ) : (
+          <Link href={next} onClick={onNext} className="flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-white hover:bg-ink-2">
+            {nextLabel} {Icon.arrow({ color: "#fff" })}
+          </Link>
+        )}
       </div>
     </div>
   );

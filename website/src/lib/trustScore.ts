@@ -69,10 +69,16 @@ async function identityCheck(e: EmailInput, p: Parsed): Promise<{ check: TrustCh
   const results = (await safe("identity", search(`${p.brand} official website`, { count: 8 }))) ?? [];
   // The official site's domain must carry the whole brand name ("brightline.com" is not "Brightline Talent").
   const key = nameKey(p.brand);
-  const official = results.find((r) => {
+  const candidates = results.filter((r) => {
     const d = rootDomain(domainOf(r.url));
-    return d && !NOT_OFFICIAL.some((n) => d.endsWith(n)) && nameKey(d.split(".")[0]).includes(key);
+    return d && !NOT_OFFICIAL.some((n) => d.endsWith(n));
   });
+  // 1) The sender's own domain ranks near the top for "<brand> official website": it's theirs
+  //    (handles names like "Grubhub for Drivers" writing from grubhub.com).
+  // 2) Otherwise, a top result whose domain carries the whole brand name.
+  const official =
+    candidates.slice(0, 3).find((r) => rootDomain(domainOf(r.url)) === sender && key.includes(nameKey(sender.split(".")[0]))) ??
+    candidates.find((r) => nameKey(rootDomain(domainOf(r.url)).split(".")[0]).includes(key));
   const realDomain = official ? rootDomain(domainOf(official.url)) : null;
   const linkDomains = linksIn(e.body).map((l) => rootDomain(domainOf(l)));
   const offLinks = realDomain ? linkDomains.filter((d) => d !== realDomain) : [];
@@ -126,7 +132,12 @@ async function scamCheck(e: EmailInput, p: Parsed, realDomain: string | null): P
     safe("scam-brand", search(`"${p.brand}" sponsorship email scam creators`, { freshness: "year", count: 8 })),
   ]);
   const text = (r: WebResult) => `${r.title} ${r.description} ${r.snippets.join(" ")}`;
-  const domainHits = (byDomain ?? []).filter((r) => text(r).toLowerCase().includes(sender) && SCAM_WORDS.test(text(r)));
+  // A report about this domain names it in its title or address and calls it a scam there,
+  // not just a page that mentions the domain somewhere near the word "scam".
+  const headline = (r: WebResult) => `${r.title} ${r.url}`.toLowerCase();
+  const domainHits = (byDomain ?? []).filter(
+    (r) => headline(r).includes(sender.split(".")[0]) && SCAM_WORDS.test(r.title) && !/\blegit\b|\breview/i.test(r.title),
+  );
   const brandHits = (byBrand ?? []).filter(
     (r) => nameKey(text(r)).includes(nameKey(p.brand)) && SCAM_WORDS.test(text(r)),
   );

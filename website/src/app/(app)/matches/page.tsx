@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { BrandLogo, Icon } from "@/components/ui";
-import { MatchLoading, Notes, PageHeader, useMatches, ViewToggle, WindowToggle } from "@/components/matches";
+import { MatchLoading, Notes, PageHeader, useMatches, WindowToggle } from "@/components/matches";
+import { VideoStrip } from "@/components/videos";
+import { campaignLabel, payLabel } from "@/lib/brandResearchState";
 import type { Brand } from "@/lib/types";
+import { creatorVideos } from "@/lib/videos";
 
 function BrandLines({ b }: { b: Brand }) {
   return (
     <div className="flex flex-col gap-1.5 text-[13px]">
       <span className={`flex items-center gap-2 ${b.spend ? "text-ink-3" : "italic text-muted"}`}>
         {Icon.dollar({ size: 15, color: "#52525B" })}
-        {b.spend ? `${b.spend.text} per creator` : "No public pay data yet"}
+        {payLabel(b)}
       </span>
       <span className="flex items-center gap-2 text-ink-3">
         {Icon.people({ size: 15, color: "#52525B" })}
@@ -25,13 +28,15 @@ function BrandLines({ b }: { b: Brand }) {
 }
 
 export default function Feed() {
-  const { result, matchLoading, matchError, loadMatches, window, saved, toggleSave } = useMatches();
+  const { result, matchLoading, matchError, loadMatches, window, saved, toggleSave, restartSearch } = useMatches();
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8 lg:px-10">
-      <PageHeader title="Brand matches" subtitle={`From your last ${window} days of posts`} mode={result?.mode}>
+      <PageHeader title="Brand matches" subtitle={`Brand activity from the last ${window} days`} mode={result?.mode}>
         <WindowToggle />
-        <ViewToggle view="grid" />
+        <Link href="/onboarding/connect" onClick={restartSearch} className="flex h-11 items-center gap-1.5 rounded-full border border-line-2 bg-white px-4 text-sm font-medium text-ink-3 hover:bg-soft">
+          {Icon.refresh({ size: 14 })} New search
+        </Link>
       </PageHeader>
 
       {matchLoading && !result && <MatchLoading />}
@@ -62,6 +67,7 @@ export default function Feed() {
               {result.brands.map((b, i) => {
                 const top = i === 0;
                 const isSaved = saved.includes(b.id);
+                const videos = creatorVideos(b);
                 return (
                   <div
                     key={b.id}
@@ -72,7 +78,7 @@ export default function Feed() {
                   >
                     <div className="flex items-center justify-between">
                       <span className={`rounded-md px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] ${top ? "border border-line bg-white text-muted" : b.live ? "bg-ok-bg text-ok-2" : "bg-soft text-muted"}`}>
-                        {top ? "TOP MATCH" : b.live ? "HIRING" : "QUIET"}
+                        {top ? "TOP MATCH" : campaignLabel(b).toUpperCase()}
                       </span>
                       <button
                         type="button"
@@ -93,6 +99,19 @@ export default function Feed() {
                         <span className="text-[13px] text-muted">{b.category}</span>
                       </div>
                     </div>
+                    {videos.length > 0 ? (
+                      <div className="flex flex-col gap-1.5">
+                        <VideoStrip videos={videos} wash={b.wash} />
+                        <span className="text-xs text-muted">
+                          {videos.length} creator video{videos.length === 1 ? "" : "s"} for them
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-[14px] border border-dashed border-line-2 px-3 py-2.5 text-xs text-muted">
+                        {Icon.play({ size: 15, color: "#6B6B74" })}
+                        {b.researchStatus === "unresearched" ? "Open to look for creator videos" : "No public creator videos found yet"}
+                      </div>
+                    )}
                     <BrandLines b={b} />
                     {b.why[0] && <p className="m-0 line-clamp-2 text-[13px] leading-[1.45] text-ink-4">{b.why[0]}</p>}
                   </div>
@@ -105,7 +124,7 @@ export default function Feed() {
             <div className="flex flex-col gap-3 rounded-[22px] border border-line bg-white p-5">
               <div className="flex items-baseline justify-between">
                 <span className="text-[15px] font-semibold">Your content</span>
-                <span className="text-xs text-muted">{result.profile.postsAnalyzed ? `${result.profile.postsAnalyzed} posts read` : "From your niches"}</span>
+                <span className="text-xs text-muted">{result.profile.postsAnalyzed ? `${result.profile.postsAnalyzed} videos read` : "From your niches"}</span>
               </div>
               <span className="text-sm text-ink-2">{result.profile.niche}</span>
               <div className="flex flex-wrap gap-2">
@@ -117,7 +136,7 @@ export default function Feed() {
               </div>
               <span className="text-xs text-muted">Audience: {result.profile.audience}</span>
               <Link href="/onboarding/connect" className="text-[13px] font-medium text-violet hover:underline">
-                Add post links to sharpen matches
+                Add video links to sharpen matches
               </Link>
             </div>
             <div

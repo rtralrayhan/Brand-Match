@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon, SamplePill, Segmented, Skeleton } from "./ui";
 import { useStore } from "@/lib/store";
@@ -32,20 +31,6 @@ export function PageHeader({ title, subtitle, mode, children }: { title: string;
   );
 }
 
-export function ViewToggle({ view }: { view: "grid" | "swipe" }) {
-  const cell = (on: boolean) => `flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-medium ${on ? "bg-white text-ink shadow-[0_1px_3px_rgba(24,24,27,0.10)]" : "text-muted"}`;
-  return (
-    <div role="group" aria-label="View" className="flex gap-1 rounded-[14px] bg-chip p-1">
-      <Link href="/matches" aria-current={view === "grid" ? "page" : undefined} className={cell(view === "grid")}>
-        {Icon.list({ size: 15 })} Grid
-      </Link>
-      <Link href="/matches/swipe" aria-current={view === "swipe" ? "page" : undefined} className={cell(view === "swipe")}>
-        {Icon.cards({ size: 15 })} Swipe
-      </Link>
-    </div>
-  );
-}
-
 export function WindowToggle() {
   const { profile, setProfile } = useStore();
   return (
@@ -60,7 +45,7 @@ export function WindowToggle() {
   );
 }
 
-const STEPS = ["Reading your posts with Extract", "Searching this month's web for brands", "Checking what each brand pays", "Scoring fit"];
+const STEPS = ["Reading your videos", "Finding brands hiring creators like you", "Ranking up to 20 matches"];
 
 export function MatchLoading() {
   const [i, setI] = useState(0);
