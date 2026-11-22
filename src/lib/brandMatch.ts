@@ -48,7 +48,8 @@ async function buildProfile(input: BrandMatchInput, deadline: number): Promise<C
     audience: input.followers ?? "Creator audience",
     postsAnalyzed: pages.length,
   };
-  if (!pages.length && !input.niches.length) return fallback;
+  // Picked niches are already enough to search when there is no post text to profile.
+  if (!pages.length) return fallback;
 
   const text = pages.map((p) => `## ${p.title}\n${p.markdown.slice(0, 1800)}`).join("\n\n");
   const llm = await chatJson<{ niche: string; topics: string[]; audience: string }>(
@@ -95,7 +96,7 @@ const BRAND_SCHEMA = {
 };
 
 /** Alternative for keys without Inference Router access. */
-async function findBrandsWithResearch(profile: CreatorProfile, input: BrandMatchInput, deadline: number): Promise<Candidate[]> {
+async function findBrandsWithResearch(profile: CreatorProfile, input: BrandMatchInput, deadline: number, effort: "lite" | "standard"): Promise<Candidate[]> {
   const period = input.window === 7 ? "week" : "month";
   const r = await researchJson<{
     brands: Array<{ name: string; category: string; website: string | null; fit: number; reason: string; evidence_urls: string[] }>;
@@ -105,7 +106,8 @@ async function findBrandsWithResearch(profile: CreatorProfile, input: BrandMatch
     }. The creator posts about: ${profile.topics.join(", ")}. Cover relevant product categories for variety. Return fewer brands if evidence is insufficient; never invent brands to fill the list. For each brand give its name, a 2-3 word category, its website domain, a fit score 0-100 for this creator, one sentence on why it fits this creator that cites what the brand did with creators, and supporting evidence URLs.`,
     BRAND_SCHEMA,
     period,
-    timeoutUntil(deadline, 45000),
+    timeoutUntil(deadline, effort === "lite" ? 15000 : 45000),
+    effort,
   );
   const titles = new Map(r.sources.map((s) => [s.url, s.title]));
   return (Array.isArray(r.data?.brands) ? r.data.brands : [])
@@ -117,7 +119,7 @@ async function findBrandsWithResearch(profile: CreatorProfile, input: BrandMatch
       fit: b.fit,
       reason: b.reason,
       evidence: (Array.isArray(b.evidence_urls) ? b.evidence_urls : [])
-        .filter((url) => typeof url === "string" && /^https?:\/\//i.test(url))
+        .filter((url) => typeof url === "string" && /^https?:\/\//i.test(url) && titles.has(url))
         .map((url) => ({ url, title: titles.get(url) ?? domainOf(url) })),
     }));
 }
@@ -172,7 +174,9 @@ async function findBrands(profile: CreatorProfile, input: BrandMatchInput, deadl
     // A 402/403 can disable the Router during ranking; use Research for that case too.
     if (candidates.length || llmAvailable()) return candidates;
   }
-  return selectCandidates((await safe("research-brands", findBrandsWithResearch(profile, input, deadline))) ?? []);
+  const quick = selectCandidates((await safe("research-brands-lite", findBrandsWithResearch(profile, input, deadline, "lite"))) ?? []);
+  if (quick.length) return quick;
+  return selectCandidates((await safe("research-brands", findBrandsWithResearch(profile, input, deadline, "standard"))) ?? []);
 }
 
 /** Deduplicate before applying the cap, retaining evidence from other lanes. */

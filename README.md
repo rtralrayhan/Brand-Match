@@ -38,7 +38,9 @@ New searches start with 7 days. The 30-day search runs only when selected and co
 
 `POST /api/brand-research` checks only the brand opened in the detail page. Completed checks are reused in the browser session; failed checks can be retried. Unchecked campaigns are labeled "Not checked", and sample runs never trigger live detail checks.
 
-The Inference Router needs purchased You.com credits. After a 402/403, Brand Match uses one structured Research call as its alternative. Other features use their existing rule-based or template fallbacks.
+The Inference Router needs purchased You.com credits. After a 402/403, Brand Match first uses lite Research, asking for JSON text and accepting only evidence URLs present in the returned sources. If lite returns no supported brands or invalid JSON, standard Research with native structured output provides a backup. Other features use their existing rule-based or template fallbacks. When no post text is available, picked niches are used directly without a separate profiling model call.
+
+Successful feed responses are also cached on the server for 10 minutes (up to 50 input/window combinations), and simultaneous identical requests share one provider run. Manual refresh bypasses that cache. The cache is local to each server process and resets on restarts or deployments; sample and failed runs are not cached there.
 
 Run `npm run lint` and `npm run build` to validate changes.
 

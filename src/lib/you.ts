@@ -165,14 +165,15 @@ export async function research(input: string): Promise<{ content: string; source
 }
 
 /**
- * Research API with structured output (standard effort, 10-30 s).
- * Returns the parsed JSON object plus the sources the agent read.
+ * Standard Research uses native structured output. Lite asks for JSON text,
+ * since the provider rejects output_schema at that effort level.
  */
 export async function researchJson<T>(
   input: string,
   schema: Record<string, unknown>,
   freshness?: Freshness,
   timeoutMs = 55000,
+  effort: "lite" | "standard" = "standard",
 ): Promise<{ data: T; sources: Array<{ url: string; title: string }> }> {
   const res = await post<{
     output?: { content?: unknown; sources?: Array<{ url: string; title?: string }> };
@@ -180,15 +181,19 @@ export async function researchJson<T>(
     "research-json",
     "https://api.you.com/v1/research",
     {
-      input,
-      research_effort: "standard",
-      output_schema: schema,
+      input: effort === "lite"
+        ? `${input}\nReturn ONLY valid JSON matching this schema. No prose or Markdown fences:\n${JSON.stringify(schema)}`
+        : input,
+      research_effort: effort,
+      ...(effort === "standard" ? { output_schema: schema } : {}),
       ...(freshness ? { source_control: { freshness } } : {}),
     },
     timeoutMs,
   );
   const content = res.output?.content;
-  const data = (typeof content === "string" ? JSON.parse(content) : content) as T;
+  const data = (typeof content === "string"
+    ? JSON.parse(content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1))
+    : content) as T;
   return { data, sources: (res.output?.sources ?? []).map((s) => ({ url: s.url, title: s.title ?? s.url })) };
 }
 
