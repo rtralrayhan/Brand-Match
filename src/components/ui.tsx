@@ -87,9 +87,9 @@ export function StepHeader({ back, step }: { back: string; step: 1 | 2 | 3 }) {
 
 const primary = "flex h-[54px] w-full items-center justify-center gap-2 rounded-full bg-ink text-[15px] font-semibold text-white disabled:opacity-50";
 
-export function PrimaryLink({ href, children }: { href: string; children: React.ReactNode }) {
+export function PrimaryLink({ href, children, onClick }: { href: string; children: React.ReactNode; onClick?: React.MouseEventHandler<HTMLAnchorElement> }) {
   return (
-    <Link href={href} className={primary}>
+    <Link href={href} className={primary} onClick={onClick}>
       {children}
       {Icon.arrow({ color: "#fff" })}
     </Link>

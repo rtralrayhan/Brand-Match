@@ -6,7 +6,7 @@ import { connectGmailHref, GmailStatusNote } from "@/components/gmail";
 import { useStore } from "@/lib/store";
 
 export default function InboxSetup() {
-  const { account, disconnectGmail } = useStore();
+  const { account, disconnectGmail, restartSearch } = useStore();
   const gmail = account?.gmail;
 
   return (
@@ -14,8 +14,8 @@ export default function InboxSetup() {
       header={<StepHeader back="/onboarding/niche" step={3} />}
       footer={
         <div className="flex flex-col items-center gap-1.5">
-          <PrimaryLink href="/matches">See my brand matches</PrimaryLink>
-          <Link href="/matches" className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
+          <PrimaryLink href="/matches" onClick={restartSearch}>See my brand matches</PrimaryLink>
+          <Link href="/matches" onClick={restartSearch} className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
             {gmail?.connected ? "Continue" : "Skip for now"}
           </Link>
         </div>

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SAMPLE_EMAILS } from "./sampleEmails";
 import { brandResearchKey, RESEARCH_FAILED, updateBrandResearch } from "./brandResearchState";
+import { mergeCachedMatches } from "./matchResults";
 import type { BrandResearch, EmailInput, MatchResult, TrustResult } from "./types";
 
 export interface Profile {
@@ -38,7 +39,7 @@ const initial: State = {
     city: "Brooklyn, NY",
     local: true,
     inbox: "gmail",
-    window: 30,
+    window: 7,
   },
   matches: {},
   trust: {},
@@ -85,7 +86,8 @@ const KEY = "vetted-state-v1";
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>(initial);
   const [hydrated, setHydrated] = useState(false);
-  const [matchLoading, setMatchLoading] = useState(false);
+  const [loadingMatches, setLoadingMatches] = useState<Partial<Record<7 | 30, boolean>>>({});
+  const matchLoading = !!loadingMatches[state.profile.window];
   const [matchError, setMatchError] = useState<string | null>(null);
   const [researchingBrands, setResearchingBrands] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState<Record<string, boolean>>({});
@@ -101,6 +103,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         restored.matches = Object.fromEntries(Object.entries(restored.matches).filter(([, result]) =>
           result?.brands.every((brand) => !!brand.researchStatus),
         ));
+        restored.matches = mergeCachedMatches(restored.matches);
         setState(restored);
       }
     } catch {}
@@ -190,9 +193,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const restartSearch = useCallback(() => {
     searchVersion.current += 1;
-    setState((s) => ({ ...s, matches: {} }));
+    setState((s) => ({ ...s, profile: { ...s.profile, window: 7 }, matches: {} }));
     setMatchError(null);
-    setMatchLoading(false);
+    setLoadingMatches({});
   }, []);
 
   const loadMatches = useCallback(
@@ -201,7 +204,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const version = searchVersion.current;
       const key = `match-${version}-${window}`;
       if (inflight.current[key]) return void (await inflight.current[key]);
-      setMatchLoading(true);
+      setLoadingMatches((s) => ({ ...s, [window]: true }));
       setMatchError(null);
       const p = (async () => {
         try {
@@ -218,14 +221,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (!res.ok) throw new Error(`Brand Match failed (${res.status})`);
           const data = (await res.json()) as MatchResult;
           if (version === searchVersion.current) {
-            setState((s) => ({ ...s, matches: { ...s.matches, [window]: data } }));
+            setState((s) => ({ ...s, matches: mergeCachedMatches({ ...s.matches, [window]: data }) }));
           }
         } catch (err) {
           if (version === searchVersion.current) {
             setMatchError(err instanceof Error ? err.message : "Something went wrong");
           }
         } finally {
-          if (version === searchVersion.current) setMatchLoading(false);
+          if (version === searchVersion.current) setLoadingMatches((s) => ({ ...s, [window]: false }));
           delete inflight.current[key];
         }
       })();
@@ -244,7 +247,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (inflight.current[key]) return void (await inflight.current[key]);
       const update = (details: BrandResearch) => setState((s) => {
         const matches = updateBrandResearch(s.matches, result, id, details);
-        return matches === s.matches ? s : { ...s, matches };
+        return matches === s.matches ? s : { ...s, matches: mergeCachedMatches(matches) };
       });
       setResearchingBrands((s) => ({ ...s, [key]: true }));
       const p = (async () => {
