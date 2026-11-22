@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { BrandLogo, Icon, TabBar } from "@/components/ui";
-import { MatchesHeader, MatchLoading, Notes, useMatches, ViewToggle, WindowToggle } from "@/components/matches";
+import { MatchesHeader, MatchLoading, Notes, useMatches, WindowToggle } from "@/components/matches";
 import type { Brand } from "@/lib/types";
 
 function BrandLines({ b }: { b: Brand }) {
@@ -30,11 +30,10 @@ export default function Feed() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <main className="scroll-area flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[18px] pb-4 pt-[22px]">
-        <MatchesHeader view="list" mode={result?.mode} subtitle={`From your last ${window} days of posts`} />
+        <MatchesHeader mode={result?.mode} subtitle={`From your last ${window} days of posts`} />
 
-        <div className="flex items-center justify-between">
+        <div className="flex">
           <WindowToggle />
-          <ViewToggle view="list" />
         </div>
 
         {matchLoading && !result && <MatchLoading />}
