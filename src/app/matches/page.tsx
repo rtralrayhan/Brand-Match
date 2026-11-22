@@ -30,7 +30,7 @@ export default function Feed() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <main className="scroll-area flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[18px] pb-4 pt-[22px]">
-        <MatchesHeader mode={result?.mode} subtitle={`From your last ${window} days of posts`} />
+        <MatchesHeader mode={result?.mode} subtitle={`Brand activity from the last ${window} days`} />
 
         <div className="flex">
           <WindowToggle />
