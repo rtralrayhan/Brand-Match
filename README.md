@@ -1,6 +1,6 @@
 # Vetted
 
-Deals that fit. From people you trust. A mobile-first web app for creators:
+Deals that fit. From people you trust. A web app for creators with one backend and two interfaces, a phone app and a desktop website, both served from https://vettedapp.nyc:
 
 - **Brand Match**: up to 20 brands that fit your content, discovered from the last 7 or 30 days of brand activity, with sources. Open a brand to check pay and current campaigns.
 - **Trust Score**: rates a brand, manager or promo email 0–100 (Looks safe / Check first / Risky) across five checks, each with sources.
@@ -15,9 +15,31 @@ cp .env.example .env.local   # then paste your key into YDC_API_KEY
 npm run dev
 ```
 
-Open http://localhost:3000. On desktop the app shows in a phone frame.
+Open http://localhost:3000. A desktop browser gets the desktop website; a phone gets the phone app. To see the other one, use the "Switch to phone view" / "Switch to desktop view" link, or open http://localhost:3000/mobile or http://localhost:3000/desktop. In a desktop browser the phone app shows in a 390px phone frame.
 
 Without `YDC_API_KEY` (or when discovery fails), the feed shows a saved sample run marked "Sample data". Successful discovery stays live if an individual brand's detail check fails; that check can be retried.
+
+## Two interfaces, one app
+
+Everything except the screens is shared: one `src/lib` (You.com client, pipelines, store), one `src/app/api`, one `src/middleware.ts`, one session cookie and one set of environment variables. An account made on a phone works on desktop and the other way round.
+
+| Screen | URL | Phone (`src/app/mobile`) | Desktop (`src/app/desktop`) |
+| --- | --- | --- | --- |
+| Home | `/` | Welcome screen | Marketing landing page (hero, how it works with screenshots, Trust Score, pricing, FAQ) |
+| Sign up / sign in | `/signup`, `/signup?mode=signin` | Full-screen form | Split screen |
+| Onboarding | `/onboarding/connect`, `/niche`, `/inbox` | Step header | Step list on the left |
+| Brand Match | `/matches`, `/matches/[id]` | Feed and detail with tab bar | Card grid and detail in a sidebar app shell |
+| Trust inbox | `/inbox`, `/inbox/[id]`, `/inbox/check` | List and detail | Split view |
+| Profile | `/settings` | Profile tab with log out | Profile page with log out |
+| Legal | `/privacy`, `/terms` | Same page in both | |
+
+URLs are identical in both. `src/middleware.ts` picks the interface for every page request and rewrites it to `src/app/mobile/…` or `src/app/desktop/…`:
+
+1. The `ui` cookie (`mobile` or `desktop`) wins when set. Opening `/mobile/…` or `/desktop/…` sets it for a year and redirects to the clean URL; the "Switch to phone/desktop view" links (`src/components/viewSwitch.tsx`) use this.
+2. Otherwise the `Sec-CH-UA-Mobile` client hint, then the user agent, decide. iPads and unknown browsers get desktop.
+3. Signed-out visitors to `/onboarding`, `/matches`, `/inbox` and `/settings` go to `/signup`.
+
+Screens use `src/components/mobile/*` or `src/components/desktop/*`; `src/components/{gmail,videos,legal,viewSwitch}.tsx` are shared. Landing-page screenshots live in `public/screenshots/` (WebP, 2000×1250 desktop, 780×1688 phone; retake at a 1440×900 window and 2x scale, same file names).
 
 ## You.com calls
 
@@ -52,12 +74,14 @@ Set `YDC_LLM_MODEL` to any model id your key can use (`curl https://api.you.com/
 - `src/lib/brandMatch.ts`, `src/lib/trustScore.ts`: the two pipelines
 - `src/lib/researchBrand.ts`, `src/lib/brandResearchState.ts`: on-demand brand research, labels, and cached updates
 - `src/lib/fallback.ts`, `src/lib/sampleEmails.ts`: sample runs and demo emails
-- `src/app/api/*`: route handlers (`brand-match`, `brand-research`, `trust-score`, `pitch`)
-- `src/app/*`: one route per design artboard
+- `src/app/api/*`: route handlers (`brand-match`, `brand-research`, `trust-score`, `pitch`, `auth/*`, `gmail/*`)
+- `src/app/mobile/*`, `src/app/desktop/*`: the two interfaces' screens (see above); `src/middleware.ts` chooses between them
 
 ## Deploy
 
-Push to GitHub, import into Vercel, add `YDC_API_KEY` as an environment variable.
+One Vercel project, `vetted`, serves both interfaces at https://vettedapp.nyc. Its environment variables are `YDC_API_KEY`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (optional `YDC_LLM_MODEL`).
+
+The old `website` Vercel project (website-two-azure-81.vercel.app, Root Directory `website`) is no longer needed: its folder is gone from the repo, so delete the project in Vercel → website → Settings → Delete Project. Its redirect URI can come out of the Google OAuth client too.
 
 ## Sign-up and Gmail
 
@@ -70,8 +94,8 @@ Sign-up is email only (name + email, no password or code). Apple and Google sign
 1. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable the **Gmail API**.
 2. **OAuth consent screen**: External, app name "Vetted", add the scope `.../auth/gmail.readonly`, and add your Gmail address under **Test users** (while the app is in Testing, only test users can connect).
 3. **Credentials → Create credentials → OAuth client ID → Web application**, with these authorized redirect URIs:
-   - `http://localhost:3100/api/gmail/callback` (and `http://localhost:3000/api/gmail/callback` if you use the default port)
-   - `https://<your-vercel-domain>/api/gmail/callback`
+   - `https://vettedapp.nyc/api/gmail/callback` (the only one production needs; it serves both the phone and desktop interfaces)
+   - for local work, `http://localhost:3000/api/gmail/callback`
 4. Put the client ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, set `AUTH_SECRET`, locally in `.env.local` and in Vercel → Settings → Environment Variables.
 
 Without the Google variables, "Connect Gmail" shows a note and the inbox keeps the demo emails.

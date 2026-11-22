@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Icon } from "./ui";
+import { Icon } from "./mobile/ui";
 
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
   connected: { text: "Gmail connected. We only read brand, manager and promo emails.", ok: true },

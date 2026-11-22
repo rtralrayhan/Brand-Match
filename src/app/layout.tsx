@@ -6,29 +6,23 @@ import { StoreProvider } from "@/lib/store";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
-  title: "Vetted",
-  description: "Deals that fit. From people you trust. Brand Match and Trust Score for creators, powered by You.com.",
+  title: "Vetted · Deals that fit. From people you trust.",
+  description: "Brand Match and Trust Score for creators, checked against this week's web with You.com.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#F7F7F8" };
 
+/** Shared by both interfaces. src/middleware.ts rewrites each request to src/app/mobile or src/app/desktop. */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>
+      <body className="min-h-dvh">
         {/* Rendered on the server so crawlers (including Google's OAuth review) always find these links. */}
         <nav aria-label="Legal" className="sr-only">
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms of Service</a>
         </nav>
-        <StoreProvider>
-          {/* Full screen on phones; a 390x844 phone frame on larger screens */}
-          <div className="min-h-dvh sm:flex sm:items-center sm:justify-center sm:py-8">
-            <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-page sm:h-[844px] sm:w-[390px] sm:rounded-[40px] sm:shadow-[0_30px_80px_rgba(24,24,27,0.18)] sm:ring-1 sm:ring-black/5">
-              {children}
-            </div>
-          </div>
-        </StoreProvider>
+        <StoreProvider>{children}</StoreProvider>
       </body>
     </html>
   );
