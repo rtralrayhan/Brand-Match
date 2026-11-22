@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BrandLogo, Icon, TabBar } from "@/components/ui";
+import { useStore } from "@/lib/store";
 import { MatchesHeader, MatchLoading, Notes, useMatches, WindowToggle } from "@/components/matches";
 import type { Brand } from "@/lib/types";
 import { campaignLabel } from "@/lib/brandResearchState";
@@ -75,6 +76,7 @@ function MatchCard({ b, top }: { b: Brand; top: boolean }) {
 
 export default function Feed() {
   const { result, matchLoading, matchError, loadMatches, window, flagged } = useMatches();
+  const { profile } = useStore();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -135,7 +137,7 @@ export default function Feed() {
         )}
       </main>
       <div className="px-[18px] pb-[26px] pt-2">
-        <TabBar active="matches" badge={flagged} />
+        <TabBar active="matches" badge={flagged} initial={profile.name} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon, PrimaryLink, Screen, StepHeader } from "@/components/ui";
+import { Icon, PrimaryButton, PrimaryLink, Screen, StepHeader } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 const ALL = ["Food", "Home and kitchen", "Fitness", "Beauty", "Parenting", "Travel", "Tech", "Fashion", "Finance", "Gaming"];
@@ -15,7 +15,8 @@ export default function Niche() {
   };
 
   return (
-    <Screen header={<StepHeader back="/onboarding/connect" step={2} />} footer={<PrimaryLink href="/onboarding/inbox">Continue</PrimaryLink>}>
+    <Screen header={<StepHeader back="/onboarding/connect" step={2} />} footer={picked.length ? <PrimaryLink href="/onboarding/inbox">Continue</PrimaryLink> : <PrimaryButton disabled>Pick at least one</PrimaryButton>}
+    >
       <div className="flex flex-col gap-2 px-1">
         <h1 className="m-0 text-[28px] font-normal leading-[1.15] tracking-[-0.025em]">
           What do you <b>make</b>?
@@ -30,8 +31,8 @@ export default function Niche() {
         <span className="mt-px">{Icon.sparkle({ color: "#5B47B8" })}</span>
         <span className="text-[13px] leading-[1.45] text-ink-2">
           {profile.links.length
-            ? `We'll read your ${profile.links.length} pasted post${profile.links.length === 1 ? "" : "s"} to find your exact niche.`
-            : "Paste post links on the last step and we'll find your exact niche from them."}
+            ? `We'll read your ${profile.links.length} video${profile.links.length === 1 ? "" : "s"} to find your exact niche.`
+            : "Add video links on the last step and we'll find your exact niche from them."}
         </span>
       </div>
 
@@ -64,7 +65,7 @@ export default function Niche() {
         </label>
         <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-3">
           City
-          <input className={`${field} px-3.5`} value={profile.city} onChange={(e) => setProfile({ city: e.target.value })} />
+          <input className={`${field} px-3.5`} placeholder="e.g. Brooklyn, NY" value={profile.city} onChange={(e) => setProfile({ city: e.target.value })} />
         </label>
         <button type="button" aria-pressed={profile.local} onClick={() => setProfile({ local: !profile.local })} className="flex items-center gap-3 py-1 text-left">
           <span className="flex flex-1 flex-col gap-0.5">

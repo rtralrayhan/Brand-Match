@@ -14,10 +14,22 @@ export default function InboxSetup() {
       header={<StepHeader back="/onboarding/niche" step={3} />}
       footer={
         <div className="flex flex-col items-center gap-1.5">
-          <PrimaryLink href="/matches" onClick={restartSearch}>See my brand matches</PrimaryLink>
-          <Link href="/matches" onClick={restartSearch} className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
-            {gmail?.connected ? "Continue" : "Skip for now"}
-          </Link>
+          {gmail?.connected ? (
+            <PrimaryLink href="/matches" onClick={restartSearch}>See my brand matches</PrimaryLink>
+          ) : (
+            <>
+              {/* A plain link: the browser must leave the app for Google's sign-in page. */}
+              <a
+                href={connectGmailHref("/onboarding/inbox")}
+                className="flex h-[54px] w-full items-center justify-center gap-2 rounded-full bg-ink text-[15px] font-semibold text-white"
+              >
+                {Icon.mail({ size: 18, color: "#fff" })} Connect Gmail
+              </a>
+              <Link href="/matches" onClick={restartSearch} className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
+                Skip for now
+              </Link>
+            </>
+          )}
         </div>
       }
     >
