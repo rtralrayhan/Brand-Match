@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SAMPLE_EMAILS } from "./sampleEmails";
-import type { EmailInput, MatchResult, TrustResult } from "./types";
+import { brandResearchKey, RESEARCH_FAILED, updateBrandResearch } from "./brandResearchState";
+import type { BrandResearch, EmailInput, MatchResult, TrustResult } from "./types";
 
 export interface Profile {
   name: string;
@@ -64,9 +65,12 @@ interface Store extends State {
   loadGmail: (force?: boolean) => Promise<void>;
   disconnectGmail: () => Promise<void>;
   setProfile: (p: Partial<Profile>) => void;
+  restartSearch: () => void;
   loadMatches: (window: 7 | 30, force?: boolean) => Promise<void>;
   matchLoading: boolean;
   matchError: string | null;
+  loadBrandResearch: (window: 7 | 30, id: string) => Promise<void>;
+  researchingBrands: Record<string, boolean>;
   checkEmail: (e: EmailInput, force?: boolean) => Promise<TrustResult | null>;
   checking: Record<string, boolean>;
   addEmail: (e: EmailInput) => void;
@@ -83,13 +87,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [researchingBrands, setResearchingBrands] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState<Record<string, boolean>>({});
   const inflight = useRef<Partial<Record<string, Promise<unknown>>>>({});
+  const searchVersion = useRef(0);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(KEY);
-      if (raw) setState({ ...initial, ...JSON.parse(raw) });
+      if (raw) {
+        const restored = { ...initial, ...JSON.parse(raw) } as State;
+        // Refresh old five-brand results while retaining the profile, inbox, and saves.
+        restored.matches = Object.fromEntries(Object.entries(restored.matches).filter(([, result]) =>
+          result?.brands.every((brand) => !!brand.researchStatus),
+        ));
+        setState(restored);
+      }
     } catch {}
     setHydrated(true);
   }, []);
@@ -175,10 +188,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await refreshAccount();
   }, [refreshAccount]);
 
+  const restartSearch = useCallback(() => {
+    searchVersion.current += 1;
+    setState((s) => ({ ...s, matches: {} }));
+    setMatchError(null);
+    setMatchLoading(false);
+  }, []);
+
   const loadMatches = useCallback(
     async (window: 7 | 30, force = false) => {
       if (!force && state.matches[window]) return;
-      const key = `match-${window}`;
+      const version = searchVersion.current;
+      const key = `match-${version}-${window}`;
       if (inflight.current[key]) return void (await inflight.current[key]);
       setMatchLoading(true);
       setMatchError(null);
@@ -196,11 +217,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           });
           if (!res.ok) throw new Error(`Brand Match failed (${res.status})`);
           const data = (await res.json()) as MatchResult;
-          setState((s) => ({ ...s, matches: { ...s.matches, [window]: data } }));
+          if (version === searchVersion.current) {
+            setState((s) => ({ ...s, matches: { ...s.matches, [window]: data } }));
+          }
         } catch (err) {
-          setMatchError(err instanceof Error ? err.message : "Something went wrong");
+          if (version === searchVersion.current) {
+            setMatchError(err instanceof Error ? err.message : "Something went wrong");
+          }
         } finally {
-          setMatchLoading(false);
+          if (version === searchVersion.current) setMatchLoading(false);
           delete inflight.current[key];
         }
       })();
@@ -208,6 +233,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await p;
     },
     [state.matches, state.profile],
+  );
+
+  const loadBrandResearch = useCallback(
+    async (window: 7 | 30, id: string) => {
+      const result = state.matches[window];
+      const brand = result?.brands.find((b) => b.id === id);
+      if (!result || result.mode !== "live" || !brand || brand.researchStatus === "complete") return;
+      const key = brandResearchKey(result, id);
+      if (inflight.current[key]) return void (await inflight.current[key]);
+      const update = (details: BrandResearch) => setState((s) => {
+        const matches = updateBrandResearch(s.matches, result, id, details);
+        return matches === s.matches ? s : { ...s, matches };
+      });
+      setResearchingBrands((s) => ({ ...s, [key]: true }));
+      const p = (async () => {
+        try {
+          const res = await fetch("/api/brand-research", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: brand.name, website: brand.website, window }),
+          });
+          if (!res.ok) throw new Error(`Brand research failed (${res.status})`);
+          update((await res.json()) as BrandResearch);
+        } catch {
+          update(RESEARCH_FAILED);
+        } finally {
+          setResearchingBrands((s) => {
+            const next = { ...s };
+            delete next[key];
+            return next;
+          });
+          delete inflight.current[key];
+        }
+      })();
+      inflight.current[key] = p;
+      await p;
+    },
+    [state.matches],
   );
 
   const checkEmail = useCallback(
@@ -261,7 +324,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         gmailError,
         loadGmail,
         disconnectGmail,
-        setProfile, loadMatches, matchLoading, matchError, checkEmail, checking, addEmail, toggleSave, report, reset }}
+        setProfile,
+        restartSearch,
+        loadMatches,
+        matchLoading,
+        matchError,
+        loadBrandResearch,
+        researchingBrands,
+        checkEmail,
+        checking,
+        addEmail,
+        toggleSave,
+        report,
+        reset,
+      }}
     >
       {hydrated ? children : null}
     </Ctx.Provider>

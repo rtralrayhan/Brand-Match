@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { BrandLogo, Icon, TabBar } from "@/components/ui";
-import { MatchesHeader, MatchLoading, Notes, useMatches, ViewToggle, WindowToggle } from "@/components/matches";
+import { MatchesHeader, MatchLoading, Notes, useMatches, WindowToggle } from "@/components/matches";
 import type { Brand } from "@/lib/types";
+import { campaignLabel, payLabel } from "@/lib/brandResearchState";
 
 function BrandLines({ b }: { b: Brand }) {
   return (
     <div className="flex flex-col gap-1.5 text-[13px]">
       <span className={`flex items-center gap-2 ${b.spend ? "text-ink-3" : "italic text-muted"}`}>
         {Icon.dollar({ size: 15, color: "#52525B" })}
-        {b.spend ? `${b.spend.text} per creator` : "No public pay data yet"}
+        {payLabel(b)}
       </span>
       <span className="flex items-center gap-2 text-ink-3">
         {Icon.people({ size: 15, color: "#52525B" })}
@@ -30,11 +31,10 @@ export default function Feed() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <main className="scroll-area flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[18px] pb-4 pt-[22px]">
-        <MatchesHeader view="list" mode={result?.mode} subtitle={`From your last ${window} days of posts`} />
+        <MatchesHeader mode={result?.mode} subtitle={`Brand activity from the last ${window} days`} />
 
-        <div className="flex items-center justify-between">
+        <div className="flex">
           <WindowToggle />
-          <ViewToggle view="list" />
         </div>
 
         {matchLoading && !result && <MatchLoading />}
@@ -76,6 +76,8 @@ export default function Feed() {
               </button>
             </div>
 
+            <p className="m-0 text-[13px] leading-normal text-muted">Open a brand to check pay and current campaigns.</p>
+
             <div className="flex flex-col gap-3">
               {result.brands.map((b, i) =>
                 i === 0 ? (
@@ -106,7 +108,7 @@ export default function Feed() {
                         <span className="text-base font-semibold">{b.name}</span>
                         <span className="text-[13px] text-muted">{b.category}</span>
                       </div>
-                      <span className="rounded-md bg-soft px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] text-muted">{b.live ? "HIRING" : "QUIET"}</span>
+                      <span className="rounded-md bg-soft px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-muted">{campaignLabel(b)}</span>
                     </div>
                     <BrandLines b={b} />
                   </Link>

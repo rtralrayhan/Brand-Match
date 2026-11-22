@@ -18,6 +18,7 @@ const hp: Brand = {
   spendNote: "Per campaign. Median $2,400 across 5 public mentions. Usage rights are usually paid on top.",
   hiring: "6 creators hired this month",
   live: true,
+  researchStatus: "complete",
   why: [
     "Your cast-iron steak reel (212k views) matches their spring skillet brief.",
     "They hired food creators with 20k to 80k followers, your size.",
@@ -36,6 +37,7 @@ const brand = (b: Partial<Brand> & Pick<Brand, "id" | "name" | "category" | "ini
   spendNote: "No public pay data yet. Ask for their rate card before you quote.",
   hiring: "Working with creators now",
   live: true,
+  researchStatus: "complete",
   why: [],
   sources: [],
   ...b,

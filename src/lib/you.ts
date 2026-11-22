@@ -73,7 +73,7 @@ interface SearchResponse {
 /** Web Search API: POST https://ydc-index.io/v1/search */
 export async function search(
   query: string,
-  opts: { freshness?: Freshness; count?: number; country?: string } = {},
+  opts: { freshness?: Freshness; count?: number; country?: string; timeoutMs?: number } = {},
 ): Promise<WebResult[]> {
   const data = await post<SearchResponse>(
     "search",
@@ -85,7 +85,7 @@ export async function search(
       ...(opts.country ? { country: opts.country } : {}),
       extraction: { extraction_mode: "highlights" },
     },
-    15000,
+    opts.timeoutMs ?? 15000,
   );
   const web = data.results?.web ?? [];
   const news = data.results?.news ?? [];
@@ -108,7 +108,7 @@ export async function search(
 }
 
 /** Extract API: POST https://ydc-index.io/v1/extract */
-export async function extract(url: string): Promise<{ url: string; title: string; markdown: string }> {
+export async function extract(url: string, timeoutMs = 20000): Promise<{ url: string; title: string; markdown: string }> {
   const data = await post<{
     title?: string;
     contents?: { full_page?: { markdown?: string } };
@@ -116,7 +116,7 @@ export async function extract(url: string): Promise<{ url: string; title: string
     "extract",
     "https://ydc-index.io/v1/extract",
     { url, full_page: { extraction_formats: ["markdown"] } },
-    20000,
+    timeoutMs,
   );
   return { url, title: data.title ?? "", markdown: data.contents?.full_page?.markdown ?? "" };
 }
@@ -172,6 +172,7 @@ export async function researchJson<T>(
   input: string,
   schema: Record<string, unknown>,
   freshness?: Freshness,
+  timeoutMs = 55000,
 ): Promise<{ data: T; sources: Array<{ url: string; title: string }> }> {
   const res = await post<{
     output?: { content?: unknown; sources?: Array<{ url: string; title?: string }> };
@@ -184,7 +185,7 @@ export async function researchJson<T>(
       output_schema: schema,
       ...(freshness ? { source_control: { freshness } } : {}),
     },
-    55000,
+    timeoutMs,
   );
   const content = res.output?.content;
   const data = (typeof content === "string" ? JSON.parse(content) : content) as T;
@@ -199,7 +200,7 @@ let llmBlocked = false;
 export const llmAvailable = () => hasKey() && !llmBlocked;
 
 /** Inference Router (OpenAI-compatible): POST https://api.you.com/v1/chat/completions */
-export async function chat(system: string, user: string, maxTokens = 1200): Promise<string> {
+export async function chat(system: string, user: string, maxTokens = 1200, timeoutMs = 40000): Promise<string> {
   if (llmBlocked) throw new YouError("chat", 402, "Inference Router unavailable for this key");
   try {
     const data = await post<{ choices?: Array<{ message?: { content?: string } }> }>(
@@ -214,7 +215,7 @@ export async function chat(system: string, user: string, maxTokens = 1200): Prom
           { role: "user", content: user },
         ],
       },
-      40000,
+      timeoutMs,
       true,
     );
     return data.choices?.[0]?.message?.content ?? "";
@@ -228,10 +229,10 @@ export async function chat(system: string, user: string, maxTokens = 1200): Prom
 }
 
 /** Ask the router for JSON and parse the first object in the reply. Returns null on any failure. */
-export async function chatJson<T>(system: string, user: string, maxTokens = 1200): Promise<T | null> {
+export async function chatJson<T>(system: string, user: string, maxTokens = 1200, timeoutMs = 40000): Promise<T | null> {
   if (!llmAvailable()) return null;
   try {
-    const text = await chat(`${system}\nReply with one JSON object only. No prose, no code fences.`, user, maxTokens);
+    const text = await chat(`${system}\nReply with one JSON object only. No prose, no code fences.`, user, maxTokens, timeoutMs);
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
     if (start < 0 || end <= start) return null;

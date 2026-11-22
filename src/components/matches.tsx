@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Icon, SamplePill, Segmented, Skeleton } from "./ui";
 import { useStore } from "@/lib/store";
 import type { MatchResult } from "@/lib/types";
@@ -18,28 +18,21 @@ export function useMatches() {
   return { ...store, window: w, result: store.matches[w] as MatchResult | undefined, flagged: flagged || 1 };
 }
 
-export function MatchesHeader({ subtitle, mode }: { view?: "list" | "swipe"; subtitle: React.ReactNode; mode?: MatchResult["mode"] }) {
+export function MatchesHeader({ subtitle, mode }: { subtitle: React.ReactNode; mode?: MatchResult["mode"] }) {
+  const { restartSearch } = useStore();
+
   return (
-    <div className="flex items-start justify-between">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/onboarding/connect" onClick={restartSearch} className="flex min-h-11 items-center rounded-full border border-line bg-white px-4 text-sm font-medium text-ink-3">
+          Back to search
+        </Link>
+        {mode && <SamplePill mode={mode} />}
+      </div>
       <div className="flex flex-col gap-1">
         <h1 className="m-0 text-[26px] font-semibold tracking-[-0.025em]">Brand matches</h1>
         <span className="text-sm text-muted">{subtitle}</span>
       </div>
-      {mode && <SamplePill mode={mode} />}
-    </div>
-  );
-}
-
-export function ViewToggle({ view }: { view: "list" | "swipe" }) {
-  const cell = (on: boolean) => `flex h-9 w-11 items-center justify-center rounded-[10px] ${on ? "bg-white shadow-[0_1px_3px_rgba(24,24,27,0.10)]" : ""}`;
-  return (
-    <div role="group" aria-label="View" className="flex gap-1 rounded-[14px] bg-chip p-1">
-      <Link href="/matches" aria-label="List view" aria-current={view === "list" ? "page" : undefined} className={cell(view === "list")}>
-        {Icon.list({ color: view === "list" ? "#18181B" : "#6B6B74" })}
-      </Link>
-      <Link href="/matches/swipe" aria-label="Swipe view" aria-current={view === "swipe" ? "page" : undefined} className={cell(view === "swipe")}>
-        {Icon.cards({ color: view === "swipe" ? "#18181B" : "#6B6B74" })}
-      </Link>
     </div>
   );
 }
@@ -58,23 +51,12 @@ export function WindowToggle() {
   );
 }
 
-const STEPS = ["Reading your posts with Extract", "Searching this month's web for brands", "Checking what each brand pays", "Scoring fit"];
-
 export function MatchLoading() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setI((x) => Math.min(x + 1, STEPS.length - 1)), 3500);
-    return () => clearInterval(t);
-  }, []);
   return (
     <div className="flex flex-col gap-3" aria-live="polite">
-      <div className="flex flex-col gap-2 rounded-[18px] border border-[#E4E1F5] bg-white p-3.5">
-        {STEPS.map((s, n) => (
-          <span key={s} className={`flex items-center gap-2.5 text-[13px] ${n <= i ? "text-ink-2" : "text-[#A1A1AA]"}`}>
-            {n < i ? Icon.tick({ size: 15, color: "#18794E" }) : n === i ? <span className="size-[15px] animate-spin rounded-full border-2 border-violet border-t-transparent" /> : <span className="size-[15px]" />}
-            {s}
-          </span>
-        ))}
+      <div className="flex items-center gap-2.5 rounded-[18px] border border-[#E4E1F5] bg-white p-3.5 text-[13px]">
+        <span className="size-[15px] shrink-0 animate-spin rounded-full border-2 border-violet border-t-transparent" />
+        Reading your content, finding brands, and ranking up to 20 matches…
       </div>
       {[0, 1, 2].map((k) => (
         <div key={k} className="flex flex-col gap-3 rounded-[22px] border border-line bg-white p-4">

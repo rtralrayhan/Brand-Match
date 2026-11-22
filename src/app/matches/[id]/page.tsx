@@ -1,20 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { BackButton, BrandLogo, Icon, SamplePill, SourceList } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { brandResearchKey, campaignLabel } from "@/lib/brandResearchState";
 
 const WHY_ICONS = [Icon.play, Icon.people, Icon.calendar];
 
 export default function BrandDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { matches, profile, saved, toggleSave } = useStore();
-  const result = matches[profile.window] ?? matches[30] ?? matches[7];
-  const brand = result?.brands.find((b) => b.id === id) ?? Object.values(matches).flatMap((m) => m?.brands ?? []).find((b) => b.id === id);
+  const { matches, profile, saved, toggleSave, loadBrandResearch, researchingBrands } = useStore();
+  const result = [matches[profile.window], ...Object.values(matches)].find((m) => m?.brands.some((b) => b.id === id));
+  const brand = result?.brands.find((b) => b.id === id);
+  const researching = !!result && !!researchingBrands[brandResearchKey(result, id)];
+  const window = result?.window;
+  const mode = result?.mode;
+  const researchStatus = brand?.researchStatus;
   const [pitch, setPitch] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (window && mode === "live" && researchStatus === "unresearched") {
+      void loadBrandResearch(window, id);
+    }
+  }, [window, mode, researchStatus, id, loadBrandResearch]);
 
   if (!brand || !result) {
     return (
@@ -71,7 +82,7 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
             <span className="rounded-md border border-line bg-white px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-4">{brand.category}</span>
             <span className="rounded-md border border-line bg-white px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-4">{result.profile.niche}</span>
             <span className={`rounded-md px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] ${brand.live ? "bg-ok-bg text-ok-2" : "bg-soft text-muted"}`}>
-              {brand.live ? "PROGRAM OPEN" : "QUIET"}
+              {researching ? "Checking…" : campaignLabel(brand)}
             </span>
           </div>
         </div>
@@ -86,12 +97,12 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
             <span className="text-xs text-muted">Public sources</span>
           </div>
           <div className={`flex flex-col gap-0.5 rounded-[18px] p-3 ${brand.live ? "bg-ok-bg text-ok" : "bg-soft text-ink-3"}`}>
-            <span className="text-[22px] font-semibold tracking-[-0.02em]">{brand.live ? "Now" : "Quiet"}</span>
+            <span className="text-base font-semibold tracking-[-0.02em]">{researching ? "Checking…" : campaignLabel(brand)}</span>
             <span className="text-xs">Hiring status</span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5 rounded-[22px] border border-line bg-white p-4">
+        <div aria-live="polite" aria-busy={researching} className="flex flex-col gap-1.5 rounded-[22px] border border-line bg-white p-4">
           <span className="text-[13px] text-muted">What they pay creators</span>
           {brand.spend ? (
             <span className="text-[28px] tracking-[-0.025em]">
@@ -103,9 +114,14 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
               )}
             </span>
           ) : (
-            <span className="text-xl italic text-muted">No public data</span>
+            <span className="text-xl italic text-muted">{researching ? "Checking pay…" : brand.researchStatus === "unresearched" ? "Not checked yet" : brand.researchStatus === "failed" ? "Check unavailable" : "No public data"}</span>
           )}
           <span className="text-[13px] leading-[1.45] text-ink-4">{brand.spendNote}</span>
+          {brand.researchStatus === "failed" && (
+            <button type="button" disabled={researching} onClick={() => loadBrandResearch(result.window, brand.id)} className="mt-2 self-start rounded-full bg-chip px-4 py-2 text-sm font-semibold disabled:opacity-50">
+              {researching ? "Checking…" : "Try again"}
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col gap-0.5 rounded-[22px] border border-line bg-white p-2">
@@ -121,7 +137,7 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between px-1">
             <span className="text-[15px] font-semibold">Sources</span>
-            <span className="text-xs text-muted">You.com, last {result.window} days</span>
+            <span className="text-xs text-muted">You.com · discovery and campaign research</span>
           </div>
           <div className="flex flex-col rounded-[22px] border border-line bg-white p-1.5">
             <SourceList sources={brand.sources} empty="No public sources yet. Treat this match as a lead, not a fact." />

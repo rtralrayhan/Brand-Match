@@ -60,7 +60,6 @@ export default function Signup() {
         <h1 className="m-0 text-[30px] font-normal leading-[1.15] tracking-[-0.025em]">
           Create your <b>account</b>
         </h1>
-        <p className="m-0 text-[15px] leading-normal text-muted">Free for 5 Trust Score checks a month. No card needed.</p>
       </div>
 
       <form
