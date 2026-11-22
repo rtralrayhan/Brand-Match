@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { exchangeCode, originOf } from "@/lib/gmail";
+import { exchangeCode, MissingScopeError, originOf } from "@/lib/gmail";
 import { getUser, setGmail, setUser } from "@/lib/session";
 
 const STATE_COOKIE = "vetted_oauth_state";
@@ -31,6 +31,7 @@ export async function GET(req: Request) {
     if (!(await getUser()) && tokens.email) await setUser({ name: tokens.email.split("@")[0], email: tokens.email });
     return back("connected");
   } catch (err) {
+    if (err instanceof MissingScopeError) return back("missing_scope");
     console.error("[gmail/callback]", err);
     return back("failed");
   }

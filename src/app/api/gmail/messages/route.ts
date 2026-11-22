@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listDealEmails } from "@/lib/gmail";
+import { listDealEmails, MissingScopeError } from "@/lib/gmail";
 import { clearGmail, getGmail } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,11 @@ export async function GET() {
     return NextResponse.json({ email: tokens.email, emails });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Couldn't read Gmail.";
+    if (err instanceof MissingScopeError) {
+      // Signed in without mail access: drop the connection so "Connect Gmail" shows again.
+      await clearGmail();
+      return NextResponse.json({ error: message }, { status: 403 });
+    }
     if (/expired|invalid_grant/i.test(message)) {
       await clearGmail();
       return NextResponse.json({ error: "Gmail access expired. Connect again." }, { status: 401 });

@@ -6,6 +6,7 @@ import { Icon } from "./ui";
 const MESSAGES: Record<string, { text: string; ok: boolean }> = {
   connected: { text: "Gmail connected. We only read brand, manager and promo emails.", ok: true },
   denied: { text: "Gmail wasn't connected: access was declined.", ok: false },
+  missing_scope: { text: "Gmail needs read access. Connect again and tick “Read your email messages and settings” on Google's screen.", ok: false },
   failed: { text: "Gmail didn't connect. Try again.", ok: false },
   not_configured: { text: "Gmail sign-in isn't set up on this server yet (Google client ID missing).", ok: false },
 };

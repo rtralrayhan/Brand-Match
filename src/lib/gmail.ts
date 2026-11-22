@@ -9,7 +9,13 @@ import type { EmailInput } from "./types";
 
 export const GMAIL_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/gmail.readonly"];
 
-export const gmailConfigured = () => !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+export class MissingScopeError extends Error {
+  constructor() {
+    super("Gmail read access wasn't granted. Connect again and tick “Read your email messages and settings”.");
+  }
+}
+
+export const gmailConfigured =() => !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
 
 export function originOf(req: Request) {
   const h = req.headers;
@@ -37,6 +43,7 @@ export function authUrl(req: Request, state: string) {
 interface TokenResponse {
   access_token: string;
   expires_in: number;
+  scope?: string;
   refresh_token?: string;
   id_token?: string;
   error?: string;
@@ -61,6 +68,10 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
 
 export async function exchangeCode(req: Request, code: string): Promise<GmailTokens> {
   const t = await tokenRequest({ code, grant_type: "authorization_code", redirect_uri: redirectUri(req) });
+  // Google lets people untick individual permissions; without this one we can't read mail.
+  if (t.scope && !t.scope.split(" ").includes("https://www.googleapis.com/auth/gmail.readonly")) {
+    throw new MissingScopeError();
+  }
   // The id_token is a JWT straight from Google's token endpoint; read the email claim from it.
   const claims = t.id_token ? JSON.parse(Buffer.from(t.id_token.split(".")[1], "base64url").toString()) : {};
   return {
@@ -89,8 +100,10 @@ export async function revoke(tokens: GmailTokens) {
 /* ---------- Reading messages ---------- */
 
 // Gmail search: brand-deal language in the last 30 days, not sent by you.
+// Skips Promotions/Social/Forums tabs and bulk mail (anything with an unsubscribe line):
+// real offers are written to you, newsletters aren't.
 const DEAL_QUERY =
-  'newer_than:30d -from:me -in:chats {collab collaboration sponsorship sponsored "paid partnership" partnership ambassador "brand deal" influencer "creator program" campaign "media kit" "rate card" UGC}';
+  'newer_than:30d -from:me -in:chats -category:promotions -category:social -category:forums -unsubscribe {collab collaboration sponsorship sponsored "paid partnership" partnership ambassador "brand deal" influencer "creator program" "media kit" "rate card" UGC "paid collab"}';
 
 interface GmailPart {
   mimeType?: string;
@@ -154,6 +167,11 @@ async function gmailGet<T>(token: string, path: string): Promise<T> {
     cache: "no-store",
   });
   if (res.status === 401) throw new Error("Gmail session expired. Connect again.");
+  if (res.status === 403) {
+    const body = await res.text();
+    if (/insufficient.*scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(body)) throw new MissingScopeError();
+    throw new Error(`Gmail refused access (403): ${body.match(/"message":\s*"([^"]+)"/)?.[1] ?? "unknown reason"}`);
+  }
   if (!res.ok) throw new Error(`Gmail API ${res.status}`);
   return (await res.json()) as T;
 }
