@@ -45,11 +45,19 @@ export default function Welcome() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-3 px-[18px] pb-7 pt-2.5">
+      <div className="flex flex-col items-center gap-2 px-[18px] pb-5 pt-2.5">
         <PrimaryLink href="/signup">Get started</PrimaryLink>
         <Link href="/matches" className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
           I already have an account
         </Link>
+        <div className="flex gap-4 text-xs text-muted">
+          <Link href="/privacy" className="text-muted hover:text-ink-3">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="text-muted hover:text-ink-3">
+            Terms of Service
+          </Link>
+        </div>
       </div>
     </div>
   );
