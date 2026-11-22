@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Tokens from the Vetted design canvas */
+@theme {
+  --color-page: #f7f7f8;
+  --color-ink: #18181b;
+  --color-ink-2: #27272a;
+  --color-ink-3: #3f3f46;
+  --color-ink-4: #52525b;
+  --color-muted: #6b6b74;
+  --color-line: #ececee;
+  --color-line-2: #e4e4e7;
+  --color-chip: #efeff1;
+  --color-soft: #f4f4f5;
+  --color-field: #fafafa;
+  --color-ok: #136b43;
+  --color-ok-2: #18794e;
+  --color-ok-bg: #e9f6ef;
+  --color-bad: #b4232a;
+  --color-bad-bg: #fdecec;
+  --color-warn: #9a4a00;
+  --color-warn-bg: #fff1df;
+  --color-violet: #5b47b8;
+  --color-violet-bg: #f1ecfd;
+  --color-alert: #e5484d;
+  --color-sample: #e5701e;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: #e9e9ec;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.scroll-area {
+  scrollbar-width: none;
+}
+.scroll-area::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.skeleton {
+  background: #ececee;
+  animation: pulse-soft 1.4s ease-in-out infinite;
 }
