@@ -19,13 +19,20 @@ export function useMatches() {
 }
 
 export function MatchesHeader({ subtitle, mode }: { view?: "list" | "swipe"; subtitle: React.ReactNode; mode?: MatchResult["mode"] }) {
+  const { restartSearch } = useStore();
+
   return (
-    <div className="flex items-start justify-between">
+    <div className="flex flex-col gap-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/onboarding/connect" onClick={restartSearch} className="flex min-h-11 items-center rounded-full border border-line bg-white px-4 text-sm font-medium text-ink-3">
+          Back to search
+        </Link>
+        {mode && <SamplePill mode={mode} />}
+      </div>
       <div className="flex flex-col gap-1">
         <h1 className="m-0 text-[26px] font-semibold tracking-[-0.025em]">Brand matches</h1>
         <span className="text-sm text-muted">{subtitle}</span>
       </div>
-      {mode && <SamplePill mode={mode} />}
     </div>
   );
 }

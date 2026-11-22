@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BackButton, PrimaryButton, SamplePill, Screen } from "@/components/ui";
 import { useStore } from "@/lib/store";
@@ -31,22 +30,6 @@ export default function Signup() {
         <h1 className="m-0 text-[30px] font-normal leading-[1.15] tracking-[-0.025em]">
           Create your <b>account</b>
         </h1>
-        <p className="m-0 text-[15px] leading-normal text-muted">Free for 5 Trust Score checks a month. No card needed.</p>
-      </div>
-
-      <div className="flex flex-col gap-2.5">
-        <Link href="/onboarding/connect" className="flex h-[54px] items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-white">
-          Continue with Apple
-        </Link>
-        <Link href="/onboarding/connect" className="flex h-[54px] items-center justify-center rounded-full border border-line-2 bg-white text-[15px] font-semibold">
-          Continue with Google
-        </Link>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-line-2" />
-        <span className="text-[13px] text-muted">or with email</span>
-        <div className="h-px flex-1 bg-line-2" />
       </div>
 
       <form
