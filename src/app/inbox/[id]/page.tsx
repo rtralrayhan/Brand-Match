@@ -7,8 +7,14 @@ import { useStore } from "@/lib/store";
 
 export default function EmailScore({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { emails, trust, checking, checkEmail, reported, report } = useStore();
-  const email = emails.find((e) => e.id === id);
+  const { emails, gmailEmails, gmailLoading, loadGmail, account, trust, checking, checkEmail, reported, report } = useStore();
+  const email = [...emails, ...(gmailEmails ?? [])].find((e) => e.id === id);
+
+  // Opened a Gmail email directly (e.g. after a refresh): read Gmail first.
+  useEffect(() => {
+    if (id.startsWith("gmail-") && gmailEmails === null && account?.gmail.connected && !gmailLoading) loadGmail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, account?.gmail.connected]);
   const t = trust[id];
   const [open, setOpen] = useState<string | null>(null);
   const [showBody, setShowBody] = useState(false);
@@ -16,11 +22,15 @@ export default function EmailScore({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     if (email && !t) checkEmail(email);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, !!email]);
 
   useEffect(() => {
     if (t && open === null) setOpen([...t.checks].sort((a, b) => a.points / a.max - b.points / b.max)[0]?.id ?? null);
   }, [t, open]);
+
+  if (!email && id.startsWith("gmail-") && (gmailLoading || account === null)) {
+    return <div className="flex flex-1 items-center justify-center text-sm text-muted">Reading Gmail…</div>;
+  }
 
   if (!email) {
     return (

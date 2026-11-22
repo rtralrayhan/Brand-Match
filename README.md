@@ -46,3 +46,20 @@ Set `YDC_LLM_MODEL` to any model id your key can use (`curl https://api.you.com/
 ## Deploy
 
 Push to GitHub, import into Vercel, add `YDC_API_KEY` as an environment variable.
+
+## Sign-up and Gmail
+
+Sign-up is email only (name + email, no password or code). Apple and Google sign-in are shown as "Soon". The session lives in an encrypted cookie; there is no database.
+
+**Connect Gmail** uses Google sign-in with the read-only Gmail scope (`gmail.readonly`). Vetted searches the last 30 days for brand-deal emails (collab, sponsorship, paid partnership, ambassador…), reads the 10 most recent and runs Trust Score on each. Tokens are stored only in an encrypted, http-only cookie. Disconnect revokes access.
+
+### Gmail setup (one time)
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable the **Gmail API**.
+2. **OAuth consent screen**: External, app name "Vetted", add the scope `.../auth/gmail.readonly`, and add your Gmail address under **Test users** (while the app is in Testing, only test users can connect).
+3. **Credentials → Create credentials → OAuth client ID → Web application**, with these authorized redirect URIs:
+   - `http://localhost:3100/api/gmail/callback` (and `http://localhost:3000/api/gmail/callback` if you use the default port)
+   - `https://<your-vercel-domain>/api/gmail/callback`
+4. Put the client ID and secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, set `AUTH_SECRET`, locally in `.env.local` and in Vercel → Settings → Environment Variables.
+
+Without the Google variables, "Connect Gmail" shows a note and the inbox keeps the demo emails.

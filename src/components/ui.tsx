@@ -128,7 +128,7 @@ export function Segmented<T extends string | number>({
           type="button"
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`h-9 rounded-[10px] px-4 text-sm font-medium ${full ? "flex-1 px-1.5 text-[13px]" : ""} ${
+          className={`h-9 whitespace-nowrap rounded-[10px] px-4 text-sm font-medium ${full ? "flex-1 px-1.5 text-[13px]" : ""} ${
             o.value === value ? "bg-white text-ink shadow-[0_1px_3px_rgba(24,24,27,0.10)]" : "text-muted"
           }`}
         >

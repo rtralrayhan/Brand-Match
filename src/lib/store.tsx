@@ -28,8 +28,8 @@ interface State {
 
 const initial: State = {
   profile: {
-    name: "Maya Ortiz",
-    email: "maya@sample.example",
+    name: "",
+    email: "",
     accounts: { tiktok: false, insta: true, youtube: true },
     links: [],
     niches: ["Food", "Home and kitchen"],
@@ -48,7 +48,21 @@ const initial: State = {
 
 const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "United Kingdom": "GB", India: "IN" };
 
+export interface Account {
+  user: { name: string; email: string } | null;
+  gmail: { configured: boolean; connected: boolean; email: string | null };
+}
+
 interface Store extends State {
+  account: Account | null;
+  refreshAccount: () => Promise<void>;
+  signup: (name: string, email: string) => Promise<string | null>;
+  signOut: () => Promise<void>;
+  gmailEmails: EmailInput[] | null;
+  gmailLoading: boolean;
+  gmailError: string | null;
+  loadGmail: (force?: boolean) => Promise<void>;
+  disconnectGmail: () => Promise<void>;
   setProfile: (p: Partial<Profile>) => void;
   loadMatches: (window: 7 | 30, force?: boolean) => Promise<void>;
   matchLoading: boolean;
@@ -88,6 +102,78 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [state, hydrated]);
 
   const setProfile = useCallback((p: Partial<Profile>) => setState((s) => ({ ...s, profile: { ...s.profile, ...p } })), []);
+
+  /* ---------- Account and Gmail (server cookies) ---------- */
+
+  const [account, setAccount] = useState<Account | null>(null);
+  const [gmailEmails, setGmailEmails] = useState<EmailInput[] | null>(null);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailError, setGmailError] = useState<string | null>(null);
+
+  const refreshAccount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const a = (await res.json()) as Account;
+      setAccount(a);
+      if (a.user) setState((s) => ({ ...s, profile: { ...s.profile, name: a.user!.name, email: a.user!.email } }));
+    } catch {
+      setAccount({ user: null, gmail: { configured: false, connected: false, email: null } });
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAccount();
+  }, [refreshAccount]);
+
+  const signup = useCallback(
+    async (name: string, email: string) => {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email }),
+      });
+      if (!res.ok) return ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't sign you up.";
+      await refreshAccount();
+      return null;
+    },
+    [refreshAccount],
+  );
+
+  const loadGmail = useCallback(async (force = false) => {
+    if (!force && inflight.current.gmail) return void (await inflight.current.gmail);
+    setGmailLoading(true);
+    setGmailError(null);
+    const p = (async () => {
+      try {
+        const res = await fetch("/api/gmail/messages", { cache: "no-store" });
+        const data = (await res.json()) as { emails?: EmailInput[]; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Couldn't read Gmail.");
+        setGmailEmails(data.emails ?? []);
+      } catch (err) {
+        setGmailError(err instanceof Error ? err.message : "Couldn't read Gmail.");
+        if (err instanceof Error && /connect again/i.test(err.message)) await refreshAccount();
+      } finally {
+        setGmailLoading(false);
+        delete inflight.current.gmail;
+      }
+    })();
+    inflight.current.gmail = p;
+    await p;
+  }, [refreshAccount]);
+
+  const disconnectGmail = useCallback(async () => {
+    await fetch("/api/gmail/disconnect", { method: "POST" });
+    setGmailEmails(null);
+    setState((s) => ({ ...s, trust: Object.fromEntries(Object.entries(s.trust).filter(([k]) => !k.startsWith("gmail-"))) }));
+    await refreshAccount();
+  }, [refreshAccount]);
+
+  const signOut = useCallback(async () => {
+    await fetch("/api/auth/signout", { method: "POST" });
+    setGmailEmails(null);
+    setState(initial);
+    await refreshAccount();
+  }, [refreshAccount]);
 
   const loadMatches = useCallback(
     async (window: 7 | 30, force = false) => {
@@ -164,7 +250,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ ...state, setProfile, loadMatches, matchLoading, matchError, checkEmail, checking, addEmail, toggleSave, report, reset }}
+      value={{
+        ...state,
+        account,
+        refreshAccount,
+        signup,
+        signOut,
+        gmailEmails,
+        gmailLoading,
+        gmailError,
+        loadGmail,
+        disconnectGmail,
+        setProfile, loadMatches, matchLoading, matchError, checkEmail, checking, addEmail, toggleSave, report, reset }}
     >
       {hydrated ? children : null}
     </Ctx.Provider>
