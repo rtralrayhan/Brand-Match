@@ -38,6 +38,9 @@ export const Icon = {
   refresh: (p: IconProps = {}) => svg(<><path d="M20 11a8 8 0 10-2.3 5.7" /><path d="M20 4v7h-7" /></>, p),
   tiktok: (p: IconProps = {}) => svg(<><path d="M14 4v10.5a3.5 3.5 0 11-3.5-3.5" /><path d="M14 4c.4 2.6 2.2 4.4 5 4.6" /></>, { width: 1.9, ...p }),
   insta: (p: IconProps = {}) => svg(<><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></>, { width: 1.9, ...p }),
+  phone: (p: IconProps = {}) => svg(<><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M11 18.5h2" /></>, { width: 1.9, ...p }),
+  monitor: (p: IconProps = {}) => svg(<><rect x="2.5" y="4" width="19" height="13" rx="2.5" /><path d="M8.5 21h7M12 17v4" /></>, { width: 1.9, ...p }),
+  external: (p: IconProps = {}) => svg(<><path d="M14 4h6v6" /><path d="M20 4l-9 9" /><path d="M18 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h4" /></>, { width: 2, ...p }),
   youtube: (p: IconProps = {}) => svg(<><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="M10 9.5l5 2.5-5 2.5z" /></>, { width: 1.9, ...p }),
 };
 

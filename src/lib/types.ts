@@ -12,6 +12,20 @@ export interface Spend {
   text: string;
 }
 
+export type VideoPlatform = "tiktok" | "instagram" | "youtube";
+
+/** A video a creator made for a brand (paid, gifted or unknown). */
+export interface CreatorVideo {
+  platform: VideoPlatform;
+  url: string;
+  handle?: string;
+  title?: string;
+  views?: string; // display text, e.g. "184k"
+  date?: string;
+  deal?: string; // e.g. "Paid partnership"
+  thumb?: string; // image URL when we know one
+}
+
 export interface Brand {
   id: string;
   name: string;
@@ -29,9 +43,11 @@ export interface Brand {
   why: string[];
   website?: string;
   sources: Source[];
+  /** Known creator videos. When missing, they are read from `sources`. */
+  videos?: CreatorVideo[];
 }
 
-export type BrandResearch = Pick<Brand, "spend" | "spendNote" | "hiring" | "live" | "researchStatus" | "sources">;
+export type BrandResearch = Pick<Brand, "spend" | "spendNote" | "hiring" | "live" | "researchStatus" | "sources" | "videos">;
 
 export interface CreatorProfile {
   niche: string;

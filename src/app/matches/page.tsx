@@ -4,24 +4,72 @@ import Link from "next/link";
 import { BrandLogo, Icon, TabBar } from "@/components/ui";
 import { MatchesHeader, MatchLoading, Notes, useMatches, WindowToggle } from "@/components/matches";
 import type { Brand } from "@/lib/types";
-import { campaignLabel, payLabel } from "@/lib/brandResearchState";
+import { campaignLabel } from "@/lib/brandResearchState";
+import { creatorVideos } from "@/lib/videos";
+import { VideoStrip } from "@/components/videos";
 
-function BrandLines({ b }: { b: Brand }) {
+function payShort(b: Brand) {
+  if (b.spend) return b.spend.text;
+  if (b.researchStatus === "unresearched") return "Not checked";
+  if (b.researchStatus === "failed") return "Check failed";
+  return "No data yet";
+}
+
+function MatchCard({ b, top }: { b: Brand; top: boolean }) {
+  const videos = creatorVideos(b);
+  const hasPay = !!b.spend;
   return (
-    <div className="flex flex-col gap-1.5 text-[13px]">
-      <span className={`flex items-center gap-2 ${b.spend ? "text-ink-3" : "italic text-muted"}`}>
-        {Icon.dollar({ size: 15, color: "#52525B" })}
-        {payLabel(b)}
-      </span>
-      <span className="flex items-center gap-2 text-ink-3">
-        {Icon.people({ size: 15, color: "#52525B" })}
-        {b.hiring}
-      </span>
-      <span className="flex items-center gap-2 font-medium text-ok-2">
-        {Icon.check({ size: 15, color: "#18794E" })}
-        Matches your content · {b.fit}%
-      </span>
-    </div>
+    <Link
+      href={`/matches/${b.id}`}
+      className={`flex flex-col gap-3.5 rounded-3xl border p-4 ${top ? "border-[#E4E1F5] shadow-[0_1px_2px_rgba(24,24,27,0.04),0_8px_24px_rgba(110,86,207,0.10)]" : "border-line bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]"}`}
+      style={top ? { background: "radial-gradient(110% 80% at 100% 0%, rgba(124,92,230,0.20) 0%, rgba(110,140,255,0.10) 35%, rgba(255,255,255,0) 65%), #FFFFFF" } : undefined}
+    >
+      {top && <span className="self-start rounded-md border border-[#E4E1F5] bg-white px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] text-violet">TOP MATCH</span>}
+
+      <div className="flex items-center gap-3">
+        <BrandLogo brand={b} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate text-base font-semibold">{b.name}</span>
+          <span className="truncate text-[13px] text-muted">{b.category}</span>
+        </div>
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-ok-bg px-[9px] py-[5px] text-xs font-semibold text-ok">
+          {Icon.tick({ size: 13, color: "#136B43", width: 2.4 })}
+          {b.fit}% fit
+        </span>
+      </div>
+
+      {videos.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <VideoStrip videos={videos} wash={b.wash} />
+          <span className="text-xs text-muted">
+            {videos.length} creator video{videos.length === 1 ? "" : "s"} for them
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-[14px] border border-dashed border-line-2 px-3 py-2.5 text-xs text-muted">
+          {Icon.play({ size: 15, color: "#6B6B74" })}
+          {b.researchStatus === "unresearched" ? "Open to look for creator videos" : "No public creator videos found yet"}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-0.5 rounded-[14px] bg-soft/80 px-3 py-2.5">
+          <span className={`text-[15px] ${hasPay ? "font-semibold" : "font-medium italic text-muted"}`}>{payShort(b)}</span>
+          <span className="text-[11px] text-muted">Pay per creator</span>
+        </div>
+        <div className="flex flex-col gap-0.5 rounded-[14px] bg-soft/80 px-3 py-2.5">
+          <span className="line-clamp-2 text-[13px] font-semibold leading-snug">{b.hiring}</span>
+          <span className="text-[11px] text-muted">Creator hiring</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className={`rounded-md px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] ${b.live ? "bg-ok-bg text-ok-2" : "bg-soft text-ink-4"}`}>{campaignLabel(b)}</span>
+        <span className="flex items-center gap-1 text-[13px] font-semibold text-violet">
+          View profile {Icon.arrow({ size: 14, color: "#5B47B8" })}
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -78,42 +126,10 @@ export default function Feed() {
 
             <p className="m-0 text-[13px] leading-normal text-muted">Open a brand to check pay and current campaigns.</p>
 
-            <div className="flex flex-col gap-3">
-              {result.brands.map((b, i) =>
-                i === 0 ? (
-                  <Link
-                    key={b.id}
-                    href={`/matches/${b.id}`}
-                    className="flex flex-col gap-3 rounded-[22px] border border-[#E4E1F5] p-4 shadow-[0_1px_2px_rgba(24,24,27,0.04),0_8px_24px_rgba(110,86,207,0.08)]"
-                    style={{ background: "radial-gradient(110% 80% at 100% 0%, rgba(124,92,230,0.20) 0%, rgba(110,140,255,0.10) 35%, rgba(255,255,255,0) 65%), #FFFFFF" }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="rounded-md border border-line bg-white px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] text-muted">TOP MATCH</span>
-                      <span className="rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-violet shadow-[0_1px_3px_rgba(24,24,27,0.10)]">View</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <BrandLogo brand={b} />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-base font-semibold">{b.name}</span>
-                        <span className="text-[13px] text-muted">{b.category}</span>
-                      </div>
-                    </div>
-                    <BrandLines b={b} />
-                  </Link>
-                ) : (
-                  <Link key={b.id} href={`/matches/${b.id}`} className="flex flex-col gap-3 rounded-[22px] border border-line bg-white p-4">
-                    <div className="flex items-center gap-3">
-                      <BrandLogo brand={b} />
-                      <div className="flex flex-1 flex-col gap-0.5">
-                        <span className="text-base font-semibold">{b.name}</span>
-                        <span className="text-[13px] text-muted">{b.category}</span>
-                      </div>
-                      <span className="rounded-md bg-soft px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-muted">{campaignLabel(b)}</span>
-                    </div>
-                    <BrandLines b={b} />
-                  </Link>
-                ),
-              )}
+            <div className="flex flex-col gap-3.5">
+              {result.brands.map((b, i) => (
+                <MatchCard key={b.id} b={b} top={i === 0} />
+              ))}
             </div>
           </>
         )}

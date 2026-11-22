@@ -1,6 +1,7 @@
 import "server-only";
-import { answer, domainOf } from "./you";
-import type { Brand, BrandResearch, Source, Spend } from "./types";
+import { answer, domainOf, safe, search } from "./you";
+import { videoFromSource } from "./videos";
+import type { Brand, BrandResearch, CreatorVideo, Source, Spend } from "./types";
 
 /** Pull "$1,500", "$2k", "$2.5K" style amounts out of text. */
 function parseSpend(text: string): Spend | null {
@@ -14,12 +15,37 @@ function parseSpend(text: string): Spend | null {
   return { min, max, text: min === max ? fmt(min) : `${fmt(min)} to ${fmt(max)}` };
 }
 
+/** Sponsored TikToks, Reels and YouTube videos creators posted for the brand. Never fails the research. */
+async function findCreatorVideos(name: string, window: 7 | 30): Promise<CreatorVideo[]> {
+  const results = await safe(
+    "creator-videos",
+    search(`"${name}" sponsored OR #ad OR "paid partnership" (site:tiktok.com OR site:instagram.com OR site:youtube.com)`, {
+      freshness: window === 7 ? "month" : "year",
+      count: 15,
+    }),
+  );
+  const seen = new Set<string>();
+  const brandWord = name.toLowerCase().split(/\s+/)[0];
+  return (results ?? [])
+    .filter((r) => `${r.title} ${r.description} ${r.snippets.join(" ")}`.toLowerCase().includes(brandWord))
+    .flatMap((r) => {
+      const v = videoFromSource({ title: r.title, url: r.url, date: r.pageAge?.slice(0, 10) });
+      if (!v || seen.has(v.url)) return [];
+      seen.add(v.url);
+      return [v];
+    })
+    .slice(0, 8);
+}
+
 /** Check one brand only when its detail page is opened. */
 export async function researchBrand(brand: Pick<Brand, "name" | "website">, window: 7 | 30): Promise<BrandResearch> {
-  const a = await answer(
-    `Is ${brand.name}${brand.website ? ` (${brand.website})` : ""} running influencer or creator campaigns right now, and how much does ${brand.name} pay creators per sponsored post or campaign? Give dollar figures if any are public.`,
-    { freshness: window === 7 ? "month" : "year" },
-  );
+  const [a, videos] = await Promise.all([
+    answer(
+      `Is ${brand.name}${brand.website ? ` (${brand.website})` : ""} running influencer or creator campaigns right now, and how much does ${brand.name} pay creators per sponsored post or campaign? Give dollar figures if any are public.`,
+      { freshness: window === 7 ? "month" : "year" },
+    ),
+    findCreatorVideos(brand.name, window),
+  ]);
   if (!a.answer.trim()) throw new Error("Brand research returned an empty answer");
   const clean = a.answer.replace(/\[\[[\d,\s]+\]\]/g, "");
   const live = /\b(currently|now|ongoing|active|open|accepting|recruiting|launched)\b/i.test(clean) && !/\bno (current|active)\b/i.test(clean);
@@ -40,5 +66,6 @@ export async function researchBrand(brand: Pick<Brand, "name" | "website">, wind
     live,
     hiring: live ? "Working with creators now" : "No sign of open campaigns",
     sources,
+    videos,
   };
 }
