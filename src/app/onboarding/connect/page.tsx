@@ -55,7 +55,7 @@ export default function Connect() {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <span className="px-1 text-sm font-semibold">Match me on</span>
+        <span className="px-1 text-sm font-semibold">Brand activity</span>
         <Segmented
           full
           value={profile.window}

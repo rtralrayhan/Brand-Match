@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Icon, SamplePill, Segmented, Skeleton } from "./ui";
 import { useStore } from "@/lib/store";
 import type { MatchResult } from "@/lib/types";
@@ -51,23 +51,12 @@ export function WindowToggle() {
   );
 }
 
-const STEPS = ["Reading your posts with Extract", "Searching this month's web for brands", "Checking what each brand pays", "Scoring fit"];
-
 export function MatchLoading() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setI((x) => Math.min(x + 1, STEPS.length - 1)), 3500);
-    return () => clearInterval(t);
-  }, []);
   return (
     <div className="flex flex-col gap-3" aria-live="polite">
-      <div className="flex flex-col gap-2 rounded-[18px] border border-[#E4E1F5] bg-white p-3.5">
-        {STEPS.map((s, n) => (
-          <span key={s} className={`flex items-center gap-2.5 text-[13px] ${n <= i ? "text-ink-2" : "text-[#A1A1AA]"}`}>
-            {n < i ? Icon.tick({ size: 15, color: "#18794E" }) : n === i ? <span className="size-[15px] animate-spin rounded-full border-2 border-violet border-t-transparent" /> : <span className="size-[15px]" />}
-            {s}
-          </span>
-        ))}
+      <div className="flex items-center gap-2.5 rounded-[18px] border border-[#E4E1F5] bg-white p-3.5 text-[13px]">
+        <span className="size-[15px] shrink-0 animate-spin rounded-full border-2 border-violet border-t-transparent" />
+        Reading your content, finding brands, and ranking up to 20 matches…
       </div>
       {[0, 1, 2].map((k) => (
         <div key={k} className="flex flex-col gap-3 rounded-[22px] border border-line bg-white p-4">
