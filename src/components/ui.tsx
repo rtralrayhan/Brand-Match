@@ -139,11 +139,11 @@ export function Segmented<T extends string | number>({
   );
 }
 
-export function TabBar({ active, badge }: { active: "matches" | "inbox"; badge?: number }) {
+export function TabBar({ active, badge, initial }: { active: "matches" | "inbox" | "profile"; badge?: number; initial?: string }) {
   const item = (on: boolean) =>
     `flex h-[46px] items-center justify-center gap-2 rounded-full text-sm font-medium ${on ? "bg-ink text-white" : "text-ink-4"}`;
   return (
-    <nav className="grid grid-cols-2 gap-1 rounded-full border border-line bg-white p-[5px] shadow-[0_8px_24px_rgba(24,24,27,0.08)]">
+    <nav className="grid grid-cols-[1fr_1fr_46px] gap-1 rounded-full border border-line bg-white p-[5px] shadow-[0_8px_24px_rgba(24,24,27,0.08)]">
       <Link href="/matches" aria-current={active === "matches" ? "page" : undefined} className={item(active === "matches")}>
         {Icon.star()} Matches
       </Link>
@@ -152,6 +152,16 @@ export function TabBar({ active, badge }: { active: "matches" | "inbox"; badge?:
         {!!badge && active !== "inbox" && (
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-alert px-1 text-[11px] font-semibold text-white">{badge}</span>
         )}
+      </Link>
+      <Link
+        href="/settings"
+        aria-label="Profile and settings"
+        aria-current={active === "profile" ? "page" : undefined}
+        className={`flex size-[46px] items-center justify-center rounded-full text-[15px] font-semibold ${
+          active === "profile" ? "bg-ink text-white" : "bg-chip text-ink-3"
+        }`}
+      >
+        {(initial ?? "").trim().charAt(0).toUpperCase() || "?"}
       </Link>
     </nav>
   );

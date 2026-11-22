@@ -9,7 +9,6 @@ import type { BrandResearch, EmailInput, MatchResult, TrustResult } from "./type
 export interface Profile {
   name: string;
   email: string;
-  accounts: { tiktok: boolean; insta: boolean; youtube: boolean };
   links: string[];
   niches: string[];
   country: string;
@@ -32,11 +31,10 @@ const initial: State = {
   profile: {
     name: "",
     email: "",
-    accounts: { tiktok: false, insta: true, youtube: true },
     links: [],
-    niches: ["Food", "Home and kitchen"],
+    niches: [],
     country: "United States",
-    city: "Brooklyn, NY",
+    city: "",
     local: true,
     inbox: "gmail",
     window: 7,
@@ -48,7 +46,7 @@ const initial: State = {
   reported: [],
 };
 
-const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "United Kingdom": "GB", India: "IN" };
+const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "United Kingdom": "GB", India: "IN", Bangladesh: "BD" };
 
 export interface Account {
   user: { name: string; email: string } | null;

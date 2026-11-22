@@ -155,7 +155,7 @@ export default function Inbox() {
         </div>
       </main>
       <div className="px-[18px] pb-[26px] pt-2">
-        <TabBar active="inbox" />
+        <TabBar active="inbox" initial={account?.user?.name} />
       </div>
     </div>
   );
