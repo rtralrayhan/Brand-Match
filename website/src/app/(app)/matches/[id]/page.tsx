@@ -2,19 +2,33 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { BrandLogo, Icon, SamplePill, SourceList } from "@/components/ui";
+import { BrandLogo, formatDate, hostOf, Icon, SamplePill, SourceList } from "@/components/ui";
+import { VideoThumb } from "@/components/videos";
+import { brandResearchKey, campaignLabel } from "@/lib/brandResearchState";
 import { useStore } from "@/lib/store";
+import { creatorVideos, PLATFORM_LABEL } from "@/lib/videos";
 
 const WHY_ICONS = [Icon.play, Icon.people, Icon.calendar];
 
 export default function BrandDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { matches, profile, saved, toggleSave } = useStore();
-  const result = matches[profile.window] ?? matches[30] ?? matches[7];
-  const brand = result?.brands.find((b) => b.id === id) ?? Object.values(matches).flatMap((m) => m?.brands ?? []).find((b) => b.id === id);
+  const { matches, profile, account, saved, toggleSave, loadBrandResearch, researchingBrands } = useStore();
+  const result = [matches[profile.window], ...Object.values(matches)].find((m) => m?.brands.some((b) => b.id === id));
+  const brand = result?.brands.find((b) => b.id === id);
+  const researching = !!result && !!researchingBrands[brandResearchKey(result, id)];
+  const window = result?.window;
+  const mode = result?.mode;
+  const researchStatus = brand?.researchStatus;
   const [pitch, setPitch] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Pay, campaigns and creator videos are checked when the brand is opened, not for every match.
+  useEffect(() => {
+    if (window && mode === "live" && researchStatus === "unresearched") {
+      void loadBrandResearch(window, id);
+    }
+  }, [window, mode, researchStatus, id, loadBrandResearch]);
 
   useEffect(() => {
     if (!pitch) return;
@@ -35,6 +49,8 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
   }
 
   const isSaved = saved.includes(brand.id);
+  const videos = creatorVideos(brand);
+  const firstName = (account?.user?.name || profile.name).split(" ")[0];
 
   const draft = async () => {
     setDrafting(true);
@@ -42,7 +58,7 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
       const res = await fetch("/api/pitch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brand, profile: result.profile, name: profile.name.split(" ")[0] }),
+        body: JSON.stringify({ brand, profile: result.profile, name: firstName }),
       });
       setPitch(((await res.json()) as { pitch: string }).pitch);
     } finally {
@@ -78,7 +94,7 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
               <span className="rounded-md border border-line bg-white px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-4">{brand.category}</span>
               <span className="rounded-md border border-line bg-white px-1.5 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-4">{result.profile.niche}</span>
               <span className={`rounded-md px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] ${brand.live ? "bg-ok-bg text-ok-2" : "bg-soft text-muted"}`}>
-                {brand.live ? "PROGRAM OPEN" : "QUIET"}
+                {researching ? "CHECKING…" : campaignLabel(brand).toUpperCase()}
               </span>
               {brand.website && (
                 <a href={`https://${brand.website.replace(/^https?:\/\//, "")}`} target="_blank" rel="noreferrer" className="rounded-md border border-line bg-white px-1.5 py-[3px] text-[10px] font-semibold tracking-[0.06em] text-violet hover:underline">
@@ -100,6 +116,42 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
         </div>
       </div>
 
+      <section aria-labelledby="videos-h" aria-busy={researching} className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between px-1">
+          <h2 id="videos-h" className="m-0 text-[17px] font-semibold">
+            Videos creators made for them
+          </h2>
+          {videos.length > 0 && (
+            <span className="text-[13px] text-muted">
+              {videos.length} video{videos.length === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
+        {videos.length > 0 ? (
+          <div className="scroll-area flex gap-3 overflow-x-auto pb-1">
+            {videos.map((v, i) => (
+              <a
+                key={v.url}
+                href={v.url}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Watch ${v.handle ?? v.title ?? "video"} on ${PLATFORM_LABEL[v.platform]}`}
+                className="flex w-[150px] shrink-0 flex-col gap-1.5 rounded-2xl transition hover:-translate-y-0.5"
+              >
+                <VideoThumb video={v} wash={brand.wash} index={i} large />
+                <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink-2">{v.handle ?? v.title ?? hostOf(v.url)}</span>
+                {(v.deal || v.date) && <span className="-mt-1 truncate text-[11px] text-muted">{[v.deal, v.date && formatDate(v.date)].filter(Boolean).join(" · ")}</span>}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-[18px] border border-dashed border-line-2 bg-white px-4 py-3.5 text-[13px] text-muted">
+            {Icon.play({ size: 16, color: "#6B6B74" })}
+            {researching ? "Looking for creator videos…" : "No public creator videos found for this brand yet."}
+          </div>
+        )}
+      </section>
+
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-3 gap-3">
@@ -112,12 +164,12 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
               <span className="text-[13px] text-muted">Public sources</span>
             </div>
             <div className={`flex flex-col gap-0.5 rounded-[20px] p-4 ${brand.live ? "bg-ok-bg text-ok" : "bg-soft text-ink-3"}`}>
-              <span className="text-[26px] font-semibold tracking-[-0.02em]">{brand.live ? "Now" : "Quiet"}</span>
+              <span className="text-[20px] font-semibold leading-[1.3] tracking-[-0.02em]">{researching ? "Checking…" : campaignLabel(brand)}</span>
               <span className="text-[13px]">Hiring status</span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5 rounded-[22px] border border-line bg-white p-5">
+          <div aria-live="polite" aria-busy={researching} className="flex flex-col gap-1.5 rounded-[22px] border border-line bg-white p-5">
             <span className="text-[13px] text-muted">What they pay creators</span>
             {brand.spend ? (
               <span className="text-[34px] tracking-[-0.025em]">
@@ -129,9 +181,21 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
                 )}
               </span>
             ) : (
-              <span className="text-2xl italic text-muted">No public data</span>
+              <span className="text-2xl italic text-muted">
+                {researching ? "Checking pay…" : brand.researchStatus === "unresearched" ? "Not checked yet" : brand.researchStatus === "failed" ? "Check unavailable" : "No public data"}
+              </span>
             )}
             <span className="text-sm leading-[1.45] text-ink-4">{brand.spendNote}</span>
+            {brand.researchStatus === "failed" && (
+              <button
+                type="button"
+                disabled={researching}
+                onClick={() => loadBrandResearch(result.window, brand.id)}
+                className="mt-2 self-start rounded-full bg-chip px-4 py-2 text-sm font-semibold hover:bg-line-2 disabled:opacity-50"
+              >
+                {researching ? "Checking…" : "Try again"}
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col gap-0.5 rounded-[22px] border border-line bg-white p-2">
@@ -148,7 +212,7 @@ export default function BrandDetail({ params }: { params: Promise<{ id: string }
         <aside className="flex flex-col gap-2 lg:sticky lg:top-8">
           <div className="flex items-baseline justify-between px-1">
             <span className="text-[15px] font-semibold">Sources</span>
-            <span className="text-xs text-muted">You.com, last {result.window} days</span>
+            <span className="text-xs text-muted">You.com · discovery and campaign research</span>
           </div>
           <div className="flex flex-col rounded-[22px] border border-line bg-white p-1.5">
             <SourceList sources={brand.sources} empty="No public sources yet. Treat this match as a lead, not a fact." />

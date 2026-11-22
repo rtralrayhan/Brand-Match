@@ -1,10 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Icon, Logo, SamplePill } from "@/components/ui";
+import { Icon, Logo } from "@/components/ui";
 
 const STEPS = [
-  { path: "/onboarding/connect", title: "Connect where you post", detail: "Accounts and recent post links" },
+  { path: "/onboarding/connect", title: "Add your videos", detail: "Links to 3 recent videos" },
   { path: "/onboarding/niche", title: "Niche and location", detail: "What you make and where" },
   { path: "/onboarding/inbox", title: "Connect your inbox", detail: "Check every brand email" },
 ];
@@ -20,7 +20,6 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
           <Logo />
           <div className="flex items-center gap-3">
             <span className="text-[13px] text-muted">Step {current + 1} of 3</span>
-            <SamplePill />
           </div>
         </div>
         <div className="h-1 bg-line">

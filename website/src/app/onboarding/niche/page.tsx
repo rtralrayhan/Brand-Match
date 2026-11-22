@@ -27,8 +27,8 @@ export default function Niche() {
         <span className="mt-px">{Icon.sparkle({ color: "#5B47B8" })}</span>
         <span className="text-sm leading-[1.45] text-ink-2">
           {profile.links.length
-            ? `We'll read your ${profile.links.length} pasted post${profile.links.length === 1 ? "" : "s"} to find your exact niche.`
-            : "Paste post links on the first step and we'll find your exact niche from them."}
+            ? `We'll read your ${profile.links.length} video${profile.links.length === 1 ? "" : "s"} to find your exact niche.`
+            : "Add video links on the first step and we'll find your exact niche from them."}
         </span>
       </div>
 
@@ -67,13 +67,13 @@ export default function Niche() {
           </label>
           <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink-3">
             City
-            <input className={fieldClass} value={profile.city} onChange={(e) => setProfile({ city: e.target.value })} />
+            <input className={fieldClass} placeholder="e.g. Brooklyn, NY" value={profile.city} onChange={(e) => setProfile({ city: e.target.value })} />
           </label>
         </div>
         <Toggle on={profile.local} onClick={() => setProfile({ local: !profile.local })} label="Include local businesses" detail="Restaurants and shops near you that hire creators" />
       </div>
 
-      <StepFooter back="/onboarding/connect" next="/onboarding/inbox" nextLabel="Continue" />
+      <StepFooter back="/onboarding/connect" next="/onboarding/inbox" nextLabel="Continue" blocked={picked.length ? undefined : "Pick at least one"} />
     </div>
   );
 }

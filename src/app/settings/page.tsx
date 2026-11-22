@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { connectGmailHref, GmailStatusNote } from "@/components/gmail";
 import { Icon, TabBar } from "@/components/ui";
 import { useStore } from "@/lib/store";
@@ -21,6 +21,14 @@ export default function Settings() {
 
   const [name, setName] = useState(account?.user?.name ?? profile.name);
   const [email, setEmail] = useState(account?.user?.email ?? profile.email);
+
+  // After a full page load the account arrives a moment later: fill the fields once it does.
+  const user = account?.user;
+  useEffect(() => {
+    if (!user) return;
+    setName((n) => n || user.name);
+    setEmail((e) => e || user.email);
+  }, [user]);
   const [niches, setNiches] = useState(profile.niches);
   const [country, setCountry] = useState(profile.country);
   const [city, setCity] = useState(profile.city);

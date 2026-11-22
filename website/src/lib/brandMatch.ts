@@ -1,6 +1,14 @@
 import "server-only";
-import { answer, chatJson, domainOf, extract, llmAvailable, researchJson, safe, search, type WebResult } from "./you";
-import type { Brand, BrandMatchInput, CreatorProfile, MatchResult, Source, Spend } from "./types";
+import { chatJson, domainOf, extract, llmAvailable, researchJson, safe, search, type WebResult } from "./you";
+import { UNRESEARCHED } from "./brandResearchState";
+import type { Brand, BrandMatchInput, CreatorProfile, MatchResult, Source } from "./types";
+
+const MATCH_LIMIT = 20;
+
+// Keep the combined profile/search/ranking flow inside the route's 60-second limit.
+function timeoutUntil(deadline: number, limit: number) {
+  return Math.max(1, Math.min(limit, deadline - Date.now()));
+}
 
 const PALETTE: Array<[string, string, string]> = [
   ["#2B1D14", "#F3C99B", "255,140,60"],
@@ -25,21 +33,9 @@ function initials(name: string) {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-/** Pull "$1,500", "$2k", "$2.5K" style amounts out of text. */
-function parseSpend(text: string): Spend | null {
-  const nums = Array.from(text.matchAll(/\$\s?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s?(k|K|thousand)?/g))
-    .map((m) => parseFloat(m[1].replace(/,/g, "")) * (m[2] ? 1000 : 1))
-    .filter((n) => n >= 50 && n <= 500000);
-  if (!nums.length) return null;
-  const min = Math.min(...nums);
-  const max = Math.max(...nums);
-  const fmt = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${Math.round(n)}`);
-  return { min, max, text: min === max ? fmt(min) : `${fmt(min)} to ${fmt(max)}` };
-}
-
 /** Step 1-2: read the creator's posts and summarise niche, topics and audience. */
-async function buildProfile(input: BrandMatchInput): Promise<CreatorProfile> {
-  const pages = (await Promise.all(input.links.slice(0, 5).map((u) => safe("extract", extract(u))))).filter(
+async function buildProfile(input: BrandMatchInput, deadline: number): Promise<CreatorProfile> {
+  const pages = (await Promise.all(input.links.slice(0, 5).map((u) => safe("extract", extract(u, timeoutUntil(deadline, 8000)))))).filter(
     (p): p is NonNullable<typeof p> => !!p && p.markdown.length > 40,
   );
   // Without a model: niche from the picked chips, topics from the post titles Extract read.
@@ -52,15 +48,17 @@ async function buildProfile(input: BrandMatchInput): Promise<CreatorProfile> {
     audience: input.followers ?? "Creator audience",
     postsAnalyzed: pages.length,
   };
-  if (!pages.length && !input.niches.length) return fallback;
+  // Picked niches are already enough to search when there is no post text to profile.
+  if (!pages.length) return fallback;
 
   const text = pages.map((p) => `## ${p.title}\n${p.markdown.slice(0, 1800)}`).join("\n\n");
   const llm = await chatJson<{ niche: string; topics: string[]; audience: string }>(
     "You profile content creators for brand matching. Be concrete: 'cast-iron weeknight cooking' beats 'food'.",
     `Creator-picked niches: ${input.niches.join(", ") || "none"}\nFollowers: ${input.followers ?? "unknown"}\n\nRecent posts:\n${text || "(no posts could be read)"}\n\nReturn {"niche": "2-4 word niche", "topics": ["3-4 short topics from the posts"], "audience": "who watches, under 10 words"}`,
     400,
+    timeoutUntil(deadline, 8000),
   );
-  if (!llm?.niche) return fallback;
+  if (!llm?.niche || !Array.isArray(llm.topics) || typeof llm.audience !== "string") return fallback;
   return { niche: llm.niche, topics: llm.topics.slice(0, 4), audience: llm.audience, postsAnalyzed: pages.length };
 }
 
@@ -97,43 +95,52 @@ const BRAND_SCHEMA = {
   },
 };
 
-/** Step 3-4 (primary): one Research call finds brands paying creators in the niche, with evidence. */
-async function findBrandsWithResearch(profile: CreatorProfile, input: BrandMatchInput): Promise<Candidate[]> {
+/** Alternative for keys without Inference Router access. */
+async function findBrandsWithResearch(profile: CreatorProfile, input: BrandMatchInput, deadline: number, effort: "lite" | "standard"): Promise<Candidate[]> {
   const period = input.window === 7 ? "week" : "month";
   const r = await researchJson<{
     brands: Array<{ name: string; category: string; website: string | null; fit: number; reason: string; evidence_urls: string[] }>;
   }>(
-    `Find up to 6 real consumer brands (not agencies, platforms, marketplaces or media sites) that sponsored, paid or recruited ${profile.niche} content creators in the last ${period}${
+    `Find up to ${MATCH_LIMIT} distinct real consumer brands (not agencies, platforms, marketplaces or media sites) that sponsored, paid or recruited ${profile.niche} content creators in the last ${period}${
       input.country ? `, prioritising brands active in ${input.country}` : ""
-    }. The creator posts about: ${profile.topics.join(", ")}. For each brand give its name, a 2-3 word category, its website domain, a fit score 0-100 for this creator, one sentence on why it fits this creator that cites what the brand did with creators, and evidence URLs.`,
+    }. The creator posts about: ${profile.topics.join(", ")}. Cover relevant product categories for variety. Return fewer brands if evidence is insufficient; never invent brands to fill the list. For each brand give its name, a 2-3 word category, its website domain, a fit score 0-100 for this creator, one sentence on why it fits this creator that cites what the brand did with creators, and supporting evidence URLs.`,
     BRAND_SCHEMA,
     period,
+    timeoutUntil(deadline, effort === "lite" ? 15000 : 45000),
+    effort,
   );
   const titles = new Map(r.sources.map((s) => [s.url, s.title]));
-  return (r.data?.brands ?? [])
+  return (Array.isArray(r.data?.brands) ? r.data.brands : [])
     .filter((b) => b?.name)
-    .sort((a, b) => b.fit - a.fit)
-    .slice(0, 6)
     .map((b) => ({
       name: b.name,
       category: b.category,
       website: b.website,
       fit: b.fit,
       reason: b.reason,
-      evidence: b.evidence_urls.slice(0, 3).map((url) => ({ url, title: titles.get(url) ?? domainOf(url) })),
+      evidence: (Array.isArray(b.evidence_urls) ? b.evidence_urls : [])
+        .filter((url) => typeof url === "string" && /^https?:\/\//i.test(url) && titles.has(url))
+        .map((url) => ({ url, title: titles.get(url) ?? domainOf(url) })),
     }));
 }
 
-/** Step 3-4 (backup): Search this week's/month's web, then let the model pull out brand names. */
-async function findBrandsWithSearch(profile: CreatorProfile, input: BrandMatchInput): Promise<Candidate[]> {
+/** Three discovery lanes feed one shared extraction and ranking call. */
+async function findBrandsWithSearch(profile: CreatorProfile, input: BrandMatchInput, deadline: number): Promise<Candidate[]> {
   const freshness = input.window === 7 ? "week" : "month";
   const n = profile.niche;
-  const queries = [`"${n}" "sponsored by"`, `${n} brand creator program influencer`, `${n} brand ambassador program apply`];
-  const batches = await Promise.all(queries.map((q) => safe("search", search(q, { freshness, count: 10, country: input.country }))));
+  const topics = profile.topics.slice(0, 2).join(" ") || n;
+  const queries = [
+    `${n} "sponsored by"`,
+    `${n} brand creator program apply`,
+    `${topics} products brands paid creator partnerships`,
+  ];
+  const batches = await Promise.all(queries.map((q) => safe("search", search(q, {
+    freshness, count: 20, country: input.country, timeoutMs: timeoutUntil(deadline, 10000),
+  }))));
   const seen = new Set<string>();
   const results: WebResult[] = [];
-  for (const r of batches.flat()) {
-    if (r && !seen.has(r.url)) {
+  for (const r of batches.flatMap((batch) => batch?.slice(0, 20) ?? [])) {
+    if (/^https?:\/\//i.test(r.url) && !seen.has(r.url)) {
       seen.add(r.url);
       results.push(r);
     }
@@ -141,72 +148,76 @@ async function findBrandsWithSearch(profile: CreatorProfile, input: BrandMatchIn
   if (!results.length) return [];
 
   const listing = results
-    .slice(0, 24)
-    .map((r, i) => `[${i}] ${r.title} (${domainOf(r.url)})\n${(r.snippets[0] ?? r.description).slice(0, 300)}`)
+    .map((r, i) => `[${i}] ${r.title}\n${r.url}\n${(r.snippets[0] ?? r.description).slice(0, 300)}`)
     .join("\n");
   const llm = await chatJson<{ brands: Array<Omit<Candidate, "evidence"> & { evidence: number[] }> }>(
     "You find brands that pay content creators. Only list real consumer brands (not agencies, platforms, marketplaces or media sites) that the results show sponsoring or recruiting creators.",
-    `Creator niche: ${n}\nTopics: ${profile.topics.join(", ")}\nAudience: ${profile.audience}\n\nWeb results from the last ${input.window} days:\n${listing}\n\nReturn {"brands": [{"name": string, "category": "2-3 words", "website": "domain or null", "fit": 0-100 match to this creator's topics, "reason": "one sentence on why it fits this creator, citing the evidence", "evidence": [result indexes]}]} with up to 6 brands, best fit first.`,
-    1400,
+    `Creator niche: ${n}\nTopics: ${profile.topics.join(", ")}\nAudience: ${profile.audience}\nCountry: ${input.country ?? "unknown"}\n\nCombined web results from the last ${input.window} days:\n${listing}\n\nReturn {"brands": [{"name": string, "category": "2-3 words", "website": "domain or null", "fit": 0-100 content fit scored consistently across all results, "reason": "one sentence on why it fits this creator, citing the evidence", "evidence": [supporting result indexes]}]} with up to ${MATCH_LIMIT} distinct brands, best fit first. Cover relevant product categories for variety. Every brand needs supporting result indexes showing sponsorship or creator recruitment. Return fewer if evidence is insufficient; never invent brands to fill the list.`,
+    5000,
+    timeoutUntil(deadline, 20000),
   );
-  return (llm?.brands ?? [])
+  return (Array.isArray(llm?.brands) ? llm.brands : [])
     .filter((b) => b?.name)
-    .slice(0, 6)
     .map((b) => ({
       ...b,
-      evidence: (b.evidence ?? [])
+      evidence: (Array.isArray(b.evidence) ? b.evidence : [])
+        .filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < results.length)
         .map((idx) => results[idx])
         .filter(Boolean)
         .map((r) => ({ title: r.title || domainOf(r.url), url: r.url, date: r.pageAge?.slice(0, 10) })),
     }));
 }
 
-async function findBrands(profile: CreatorProfile, input: BrandMatchInput): Promise<Candidate[]> {
-  const viaResearch = await safe("research-brands", findBrandsWithResearch(profile, input));
-  if (viaResearch?.length) return viaResearch;
-  return llmAvailable() ? findBrandsWithSearch(profile, input) : [];
+async function findBrands(profile: CreatorProfile, input: BrandMatchInput, deadline: number): Promise<Candidate[]> {
+  if (llmAvailable()) {
+    const candidates = selectCandidates(await findBrandsWithSearch(profile, input, deadline));
+    // A 402/403 can disable the Router during ranking; use Research for that case too.
+    if (candidates.length || llmAvailable()) return candidates;
+  }
+  const quick = selectCandidates((await safe("research-brands-lite", findBrandsWithResearch(profile, input, deadline, "lite"))) ?? []);
+  if (quick.length) return quick;
+  return selectCandidates((await safe("research-brands", findBrandsWithResearch(profile, input, deadline, "standard"))) ?? []);
 }
 
-/** Step 5: what the brand pays and whether it's hiring now. */
-async function spendFor(c: Candidate, window: 7 | 30) {
-  const a = await safe(
-    "spend",
-    answer(
-      `Is ${c.name} running influencer or creator campaigns right now, and how much does ${c.name} pay creators per sponsored post or campaign? Give dollar figures if any are public.`,
-      { freshness: window === 7 ? "month" : "year" },
-    ),
-  );
-  if (!a) return { spend: null, live: false, hiring: "Couldn't check hiring right now", sources: [] as Source[] };
-  const clean = a.answer.replace(/\[\[[\d,\s]+\]\]/g, "");
-  const live = /\b(currently|now|ongoing|active|open|accepting|recruiting|launched)\b/i.test(clean) && !/\bno (current|active)\b/i.test(clean);
-  const sources: Source[] = a.citations.slice(0, 4).map((cit) => {
-    const r = a.results.find((x) => x.url === cit.source);
-    return { title: r?.title ?? domainOf(cit.source), url: cit.source, date: r?.page_age?.slice(0, 10) };
-  });
-  return {
-    spend: parseSpend(clean),
-    live,
-    hiring: live ? "Working with creators now" : "No sign of open campaigns",
-    sources,
-  };
+/** Deduplicate before applying the cap, retaining evidence from other lanes. */
+function selectCandidates(candidates: Candidate[]): Candidate[] {
+  const merged: Candidate[] = [];
+  const valid = candidates.filter((c) =>
+    c && typeof c.name === "string" && slug(c.name) && typeof c.category === "string" &&
+    typeof c.reason === "string" && Number.isFinite(c.fit) && Array.isArray(c.evidence),
+  ).map((c) => ({
+    ...c,
+    fit: Math.round(Math.max(0, Math.min(100, c.fit))),
+    website: typeof c.website === "string" ? c.website : null,
+    evidence: c.evidence.filter((source) => source && typeof source.url === "string" && /^https?:\/\//i.test(source.url)),
+  })).filter((c) => c.evidence.length).sort((a, b) => b.fit - a.fit);
+
+  for (const candidate of valid) {
+    const domain = candidate.website ? domainOf(candidate.website) : "";
+    const duplicate = merged.find((brand) => slug(brand.name) === slug(candidate.name) ||
+      (domain && brand.website && domainOf(brand.website) === domain));
+    if (duplicate) {
+      duplicate.evidence = [...new Map([...duplicate.evidence, ...candidate.evidence].map((source) => [source.url, source])).values()];
+    } else {
+      merged.push(candidate);
+    }
+  }
+  return merged.slice(0, MATCH_LIMIT);
 }
 
 export async function runBrandMatch(input: BrandMatchInput): Promise<MatchResult> {
   const notes: string[] = [];
-  const profile = await buildProfile(input);
+  const deadline = Date.now() + 50000;
+  const profile = await buildProfile(input, deadline);
   if (input.links.length && profile.postsAnalyzed === 0) notes.push("Couldn't read your post links, so we matched on your picked niches.");
 
-  const candidates = await findBrands(profile, input);
+  const candidates = await findBrands(profile, input, deadline);
   if (!candidates.length) throw new Error("No brands found in this window");
 
-  const spends = await Promise.all(candidates.slice(0, 5).map((c) => spendFor(c, input.window)));
-
-  const brands: Brand[] = candidates.slice(0, 5).map((c, i) => {
-    const s = spends[i];
+  const brands: Brand[] = candidates.map((c) => {
     const [logoBg, logoFg, wash] = PALETTE[hash(c.name) % PALETTE.length];
-    const evidence = c.evidence;
-    const fit = Math.round(0.7 * Math.max(0, Math.min(100, c.fit || 60)) + 0.2 * (s.live ? 100 : 55) + 0.1 * (s.spend ? 100 : 60));
     return {
+      ...UNRESEARCHED,
       id: slug(c.name),
       name: c.name,
       category: c.category,
@@ -214,19 +225,12 @@ export async function runBrandMatch(input: BrandMatchInput): Promise<MatchResult
       logoBg,
       logoFg,
       wash,
-      fit,
-      spend: s.spend,
-      spendNote: s.spend
-        ? `Per post or campaign, from ${s.sources.length} public source${s.sources.length === 1 ? "" : "s"}. Usage rights are usually paid on top.`
-        : "No public pay data yet. Ask for their rate card before you quote.",
-      hiring: s.hiring,
-      live: s.live,
-      why: [c.reason, s.live ? "Public posts show them working with creators now." : "They've worked with creators, but nothing open this month."],
+      fit: c.fit,
+      why: [c.reason],
       website: c.website ?? undefined,
-      sources: [...evidence, ...s.sources].slice(0, 6),
+      sources: c.evidence.slice(0, 5),
     };
   });
-  brands.sort((a, b) => b.fit - a.fit);
 
   return { mode: "live", window: input.window, profile, brands, notes, generatedAt: new Date().toISOString() };
 }

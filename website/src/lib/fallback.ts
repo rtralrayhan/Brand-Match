@@ -1,4 +1,13 @@
-import type { Brand, EmailInput, MatchResult, TrustResult } from "./types";
+import type { Brand, CreatorVideo, EmailInput, MatchResult, TrustResult } from "./types";
+
+const vid = (platform: CreatorVideo["platform"], handle: string, views: string, date: string, deal = "Paid partnership"): CreatorVideo => ({
+  platform,
+  handle,
+  views,
+  date,
+  deal,
+  url: `https://${platform}.example/${handle.replace("@", "")}`,
+});
 
 /**
  * Sample runs shown when the You.com API is unavailable or no key is set.
@@ -18,6 +27,7 @@ const hp: Brand = {
   spendNote: "Per campaign. Median $2,400 across 5 public mentions. Usage rights are usually paid on top.",
   hiring: "6 creators hired this month",
   live: true,
+  researchStatus: "complete",
   why: [
     "Your cast-iron steak reel (212k views) matches their spring skillet brief.",
     "They hired food creators with 20k to 80k followers, your size.",
@@ -29,6 +39,13 @@ const hp: Brand = {
     { title: "Creator rates thread", url: "https://reddit.example", date: "2026-11-04" },
     { title: "Spring brief roundup", url: "https://newsletter.example", date: "2026-10-29" },
   ],
+  videos: [
+    vid("instagram", "@skilletsam", "184k", "2026-11-14"),
+    vid("tiktok", "@nonnacooks", "412k", "2026-11-09"),
+    vid("instagram", "@pan.and.plate", "96k", "2026-11-03"),
+    vid("tiktok", "@castironkid", "57k", "2026-10-28", "Gifted"),
+    vid("youtube", "@searandsizzle", "38k", "2026-10-22"),
+  ],
 };
 
 const brand = (b: Partial<Brand> & Pick<Brand, "id" | "name" | "category" | "initials" | "logoBg" | "logoFg" | "wash" | "fit">): Brand => ({
@@ -36,6 +53,7 @@ const brand = (b: Partial<Brand> & Pick<Brand, "id" | "name" | "category" | "ini
   spendNote: "No public pay data yet. Ask for their rate card before you quote.",
   hiring: "Working with creators now",
   live: true,
+  researchStatus: "complete",
   why: [],
   sources: [],
   ...b,
@@ -48,15 +66,18 @@ export function sampleMatch(window: 7 | 30): MatchResult {
       id: "greenbasket", name: "Greenbasket", category: "Grocery delivery", initials: "Gb", logoBg: "#E2F2E7", logoFg: "#1F6B3A", wash: "60,180,110",
       fit: 88, spend: { min: 800, max: 2500, text: "$800 to $2.5k" }, spendNote: "Per campaign, from 3 public sources.", hiring: "11 creators hired this month",
       why: ["Your budget meal series fits their “feed four for $20” campaign."],
+      videos: [vid("tiktok", "@feedfourfor20", "230k", "2026-11-16"), vid("instagram", "@weeknight.wins", "75k", "2026-11-10"), vid("tiktok", "@budgetbites", "52k", "2026-11-02"), vid("instagram", "@mealprepmaya", "31k", "2026-10-30")],
     }),
     brand({
       id: "saltwell", name: "Saltwell Spice Co.", category: "Spices and blends", initials: "Sw", logoBg: "#FCE9DC", logoFg: "#9A3D12", wash: "235,100,70",
       fit: 81, hiring: "3 creators hired this month", why: ["Your spice-rub shorts get twice your average saves."],
+      videos: [vid("tiktok", "@rubandsmoke", "88k", "2026-11-15"), vid("instagram", "@spiceshelf", "41k", "2026-11-06", "Gifted"), vid("youtube", "@grillnotes", "23k", "2026-10-31")],
     }),
     brand({
       id: "kitchly", name: "Kitchly", category: "Meal kits", initials: "Ki", logoBg: "#E8EEFD", logoFg: "#2F4EB8", wash: "90,120,255",
       fit: 76, spend: { min: 2000, max: 6000, text: "$2k to $6k" }, hiring: "Last hired creators in October", live: false,
       why: ["Your meal-prep Sundays match their audience, but they aren't hiring right now."],
+      videos: [vid("instagram", "@sundayprep", "140k", "2026-10-12"), vid("youtube", "@kitchentested", "61k", "2026-10-04")],
     }),
   ];
   const week: Brand[] = [
@@ -65,6 +86,7 @@ export function sampleMatch(window: 7 | 30): MatchResult {
     brand({
       id: "ovenly", name: "Ovenly", category: "Bakeware", initials: "Ov", logoBg: "#F1E8FD", logoFg: "#6A2AAE", wash: "150,90,230",
       fit: 79, spend: { min: 500, max: 1500, text: "$500 to $1.5k" }, hiring: "4 creators hired this week", why: ["Your one-pan bakes fit their holiday push."],
+      videos: [vid("instagram", "@bakesbyjo", "120k", "2026-11-17"), vid("tiktok", "@sheetpanpie", "67k", "2026-11-13"), vid("instagram", "@crumbandco", "34k", "2026-11-11")],
     }),
   ];
   return {

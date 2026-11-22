@@ -1,13 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Icon, Logo } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { profile, trust, saved, matches, reset } = useStore();
+  const { profile, account, trust, saved, matches, signOut } = useStore();
+  const router = useRouter();
+  const name = account?.user?.name || profile.name || "Your profile";
+  const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const logOut = async () => {
+    await signOut();
+    router.replace("/");
+  };
   const risky = Object.values(trust).filter((t) => t.band === "risky").length;
   const savedBrands = Object.values(matches)
     .flatMap((m) => m?.brands ?? [])
@@ -16,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const nav = [
     { href: "/matches", label: "Brand matches", short: "Matches", icon: Icon.star, on: path.startsWith("/matches") },
     { href: "/inbox", label: "Trust inbox", short: "Inbox", icon: Icon.shield, on: path.startsWith("/inbox"), badge: risky },
+    { href: "/settings", label: "Profile", short: "Profile", icon: Icon.people, on: path.startsWith("/settings") },
   ];
 
   return (
@@ -57,37 +65,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               ))
             ) : (
-              <span className="px-3 text-xs leading-normal text-muted">Save a brand or swipe right to keep it here.</span>
+              <span className="px-3 text-xs leading-normal text-muted">Save a brand to keep it here.</span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-line p-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-violet-bg text-sm font-semibold text-violet">
-            {profile.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-sm font-semibold">{profile.name}</span>
-            <span className="truncate text-xs text-muted">{profile.niches.join(", ") || "No niche yet"}</span>
-          </span>
-          <Link href="/onboarding/connect" aria-label="Edit profile" className="rounded-lg p-1.5 hover:bg-soft">
+        <div className="flex flex-col gap-1">
+          <Link
+            href="/settings"
+            className="flex items-center gap-3 rounded-2xl border border-line p-3 hover:bg-soft"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-violet-bg text-sm font-semibold text-violet">{initials || "?"}</span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-semibold">{name}</span>
+              <span className="truncate text-xs text-muted">{account?.user?.email || profile.niches.join(", ") || "No niche yet"}</span>
+            </span>
             {Icon.chevron({ size: 14, color: "#6B6B74" })}
           </Link>
+          <button type="button" onClick={logOut} className="px-3 py-1.5 text-left text-xs text-muted hover:text-ink">
+            Log out
+          </button>
         </div>
-        <button type="button" onClick={reset} className="-mt-3 text-left text-xs text-muted hover:text-ink px-3">
-          Reset demo
-        </button>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar on small screens */}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-line bg-white px-4 md:hidden">
           <Logo href="/matches" />
-          <nav className="flex gap-1">
+          <nav aria-label="App" className="flex gap-0.5 sm:gap-1">
             {nav.map((n) => (
-              <Link key={n.href} href={n.href} className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium ${n.on ? "bg-ink text-white" : "text-ink-3"}`}>
+              <Link
+                key={n.href}
+                href={n.href}
+                aria-current={n.on ? "page" : undefined}
+                className={`flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium sm:px-3 ${n.on ? "bg-ink text-white" : "text-ink-3"}`}
+              >
                 {n.icon({ size: 15 })}
-                {n.short}
+                <span className="max-[400px]:sr-only">{n.short}</span>
               </Link>
             ))}
           </nav>

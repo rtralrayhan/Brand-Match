@@ -2,12 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SAMPLE_EMAILS } from "./sampleEmails";
-import type { EmailInput, MatchResult, TrustResult } from "./types";
+import { brandResearchKey, RESEARCH_FAILED, updateBrandResearch } from "./brandResearchState";
+import { mergeCachedMatches } from "./matchResults";
+import type { BrandResearch, EmailInput, MatchResult, TrustResult } from "./types";
 
 export interface Profile {
   name: string;
   email: string;
-  accounts: { tiktok: boolean; insta: boolean; youtube: boolean };
   links: string[];
   niches: string[];
   country: string;
@@ -28,16 +29,15 @@ interface State {
 
 const initial: State = {
   profile: {
-    name: "Maya Ortiz",
-    email: "maya@sample.example",
-    accounts: { tiktok: false, insta: true, youtube: true },
+    name: "",
+    email: "",
     links: [],
-    niches: ["Food", "Home and kitchen"],
+    niches: [],
     country: "United States",
-    city: "Brooklyn, NY",
+    city: "",
     local: true,
     inbox: "gmail",
-    window: 30,
+    window: 7,
   },
   matches: {},
   trust: {},
@@ -46,13 +46,30 @@ const initial: State = {
   reported: [],
 };
 
-const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "United Kingdom": "GB", India: "IN" };
+const COUNTRY: Record<string, string> = { "United States": "US", Canada: "CA", "United Kingdom": "GB", India: "IN", Bangladesh: "BD" };
+
+export interface Account {
+  user: { name: string; email: string } | null;
+  gmail: { configured: boolean; connected: boolean; email: string | null };
+}
 
 interface Store extends State {
+  account: Account | null;
+  refreshAccount: () => Promise<void>;
+  signup: (name: string, email: string) => Promise<string | null>;
+  signOut: () => Promise<void>;
+  gmailEmails: EmailInput[] | null;
+  gmailLoading: boolean;
+  gmailError: string | null;
+  loadGmail: (force?: boolean) => Promise<void>;
+  disconnectGmail: () => Promise<void>;
   setProfile: (p: Partial<Profile>) => void;
+  restartSearch: () => void;
   loadMatches: (window: 7 | 30, force?: boolean) => Promise<void>;
   matchLoading: boolean;
   matchError: string | null;
+  loadBrandResearch: (window: 7 | 30, id: string) => Promise<void>;
+  researchingBrands: Record<string, boolean>;
   checkEmail: (e: EmailInput, force?: boolean) => Promise<TrustResult | null>;
   checking: Record<string, boolean>;
   addEmail: (e: EmailInput) => void;
@@ -67,15 +84,26 @@ const KEY = "vetted-state-v1";
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>(initial);
   const [hydrated, setHydrated] = useState(false);
-  const [matchLoading, setMatchLoading] = useState(false);
+  const [loadingMatches, setLoadingMatches] = useState<Partial<Record<7 | 30, boolean>>>({});
+  const matchLoading = !!loadingMatches[state.profile.window];
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [researchingBrands, setResearchingBrands] = useState<Record<string, boolean>>({});
   const [checking, setChecking] = useState<Record<string, boolean>>({});
   const inflight = useRef<Partial<Record<string, Promise<unknown>>>>({});
+  const searchVersion = useRef(0);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(KEY);
-      if (raw) setState({ ...initial, ...JSON.parse(raw) });
+      if (raw) {
+        const restored = { ...initial, ...JSON.parse(raw) } as State;
+        // Refresh old five-brand results while retaining the profile, inbox, and saves.
+        restored.matches = Object.fromEntries(Object.entries(restored.matches).filter(([, result]) =>
+          result?.brands.every((brand) => !!brand.researchStatus),
+        ));
+        restored.matches = mergeCachedMatches(restored.matches);
+        setState(restored);
+      }
     } catch {}
     setHydrated(true);
   }, []);
@@ -89,12 +117,92 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const setProfile = useCallback((p: Partial<Profile>) => setState((s) => ({ ...s, profile: { ...s.profile, ...p } })), []);
 
+  /* ---------- Account and Gmail (server cookies) ---------- */
+
+  const [account, setAccount] = useState<Account | null>(null);
+  const [gmailEmails, setGmailEmails] = useState<EmailInput[] | null>(null);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailError, setGmailError] = useState<string | null>(null);
+
+  const refreshAccount = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const a = (await res.json()) as Account;
+      setAccount(a);
+      if (a.user) setState((s) => ({ ...s, profile: { ...s.profile, name: a.user!.name, email: a.user!.email } }));
+    } catch {
+      setAccount({ user: null, gmail: { configured: false, connected: false, email: null } });
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAccount();
+  }, [refreshAccount]);
+
+  const signup = useCallback(
+    async (name: string, email: string) => {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email }),
+      });
+      if (!res.ok) return ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Couldn't sign you up.";
+      await refreshAccount();
+      return null;
+    },
+    [refreshAccount],
+  );
+
+  const loadGmail = useCallback(async (force = false) => {
+    if (!force && inflight.current.gmail) return void (await inflight.current.gmail);
+    setGmailLoading(true);
+    setGmailError(null);
+    const p = (async () => {
+      try {
+        const res = await fetch("/api/gmail/messages", { cache: "no-store" });
+        const data = (await res.json()) as { emails?: EmailInput[]; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Couldn't read Gmail.");
+        setGmailEmails(data.emails ?? []);
+      } catch (err) {
+        setGmailError(err instanceof Error ? err.message : "Couldn't read Gmail.");
+        if (err instanceof Error && /connect again/i.test(err.message)) await refreshAccount();
+      } finally {
+        setGmailLoading(false);
+        delete inflight.current.gmail;
+      }
+    })();
+    inflight.current.gmail = p;
+    await p;
+  }, [refreshAccount]);
+
+  const disconnectGmail = useCallback(async () => {
+    await fetch("/api/gmail/disconnect", { method: "POST" });
+    setGmailEmails(null);
+    setState((s) => ({ ...s, trust: Object.fromEntries(Object.entries(s.trust).filter(([k]) => !k.startsWith("gmail-"))) }));
+    await refreshAccount();
+  }, [refreshAccount]);
+
+  const signOut = useCallback(async () => {
+    await fetch("/api/auth/signout", { method: "POST" });
+    setGmailEmails(null);
+    setState(initial);
+    await refreshAccount();
+  }, [refreshAccount]);
+
+  const restartSearch = useCallback(() => {
+    searchVersion.current += 1;
+    setState((s) => ({ ...s, profile: { ...s.profile, window: 7 }, matches: {} }));
+    setMatchError(null);
+    setLoadingMatches({});
+  }, []);
+
   const loadMatches = useCallback(
     async (window: 7 | 30, force = false) => {
       if (!force && state.matches[window]) return;
-      const key = `match-${window}`;
+      const version = searchVersion.current;
+      const key = `match-${version}-${window}`;
       if (inflight.current[key]) return void (await inflight.current[key]);
-      setMatchLoading(true);
+      setLoadingMatches((s) => ({ ...s, [window]: true }));
       setMatchError(null);
       const p = (async () => {
         try {
@@ -106,15 +214,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               niches: state.profile.niches,
               window,
               country: COUNTRY[state.profile.country],
+              refresh: force,
             }),
           });
           if (!res.ok) throw new Error(`Brand Match failed (${res.status})`);
           const data = (await res.json()) as MatchResult;
-          setState((s) => ({ ...s, matches: { ...s.matches, [window]: data } }));
+          if (version === searchVersion.current) {
+            setState((s) => ({ ...s, matches: mergeCachedMatches({ ...s.matches, [window]: data }) }));
+          }
         } catch (err) {
-          setMatchError(err instanceof Error ? err.message : "Something went wrong");
+          if (version === searchVersion.current) {
+            setMatchError(err instanceof Error ? err.message : "Something went wrong");
+          }
         } finally {
-          setMatchLoading(false);
+          if (version === searchVersion.current) setLoadingMatches((s) => ({ ...s, [window]: false }));
           delete inflight.current[key];
         }
       })();
@@ -122,6 +235,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await p;
     },
     [state.matches, state.profile],
+  );
+
+  const loadBrandResearch = useCallback(
+    async (window: 7 | 30, id: string) => {
+      const result = state.matches[window];
+      const brand = result?.brands.find((b) => b.id === id);
+      if (!result || result.mode !== "live" || !brand || brand.researchStatus === "complete") return;
+      const key = brandResearchKey(result, id);
+      if (inflight.current[key]) return void (await inflight.current[key]);
+      const update = (details: BrandResearch) => setState((s) => {
+        const matches = updateBrandResearch(s.matches, result, id, details);
+        return matches === s.matches ? s : { ...s, matches: mergeCachedMatches(matches) };
+      });
+      setResearchingBrands((s) => ({ ...s, [key]: true }));
+      const p = (async () => {
+        try {
+          const res = await fetch("/api/brand-research", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: brand.name, website: brand.website, window }),
+          });
+          if (!res.ok) throw new Error(`Brand research failed (${res.status})`);
+          update((await res.json()) as BrandResearch);
+        } catch {
+          update(RESEARCH_FAILED);
+        } finally {
+          setResearchingBrands((s) => {
+            const next = { ...s };
+            delete next[key];
+            return next;
+          });
+          delete inflight.current[key];
+        }
+      })();
+      inflight.current[key] = p;
+      await p;
+    },
+    [state.matches],
   );
 
   const checkEmail = useCallback(
@@ -164,7 +315,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ ...state, setProfile, loadMatches, matchLoading, matchError, checkEmail, checking, addEmail, toggleSave, report, reset }}
+      value={{
+        ...state,
+        account,
+        refreshAccount,
+        signup,
+        signOut,
+        gmailEmails,
+        gmailLoading,
+        gmailError,
+        loadGmail,
+        disconnectGmail,
+        setProfile,
+        restartSearch,
+        loadMatches,
+        matchLoading,
+        matchError,
+        loadBrandResearch,
+        researchingBrands,
+        checkEmail,
+        checking,
+        addEmail,
+        toggleSave,
+        report,
+        reset,
+      }}
     >
       {hydrated ? children : null}
     </Ctx.Provider>

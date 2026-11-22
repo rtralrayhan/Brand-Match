@@ -47,11 +47,11 @@ const PAINS = [
 const STEPS = [
   {
     tag: "Set up",
-    title: "Connect where you post",
-    body: "Sign up with email, Apple or Google, then connect TikTok, Instagram or YouTube. Paste three recent post links and Vetted reads them with You.com to learn what you actually make.",
-    points: ["Read-only. We never post for you.", "Choose to match on your last 7 or 30 days."],
+    title: "Add your recent videos",
+    body: "Sign up with Google or email, then paste links to three recent YouTube, TikTok or Instagram videos. Vetted reads them with You.com to learn what you actually make.",
+    points: ["No account login needed.", "Choose to match on the last 7 or 30 days."],
     img: "/screenshots/connect.webp",
-    alt: "Onboarding step one: connect TikTok, Instagram and YouTube, and paste recent post links",
+    alt: "Onboarding step one: three recent video links from YouTube, TikTok and Instagram pasted in",
   },
   {
     tag: "Set up",
@@ -64,23 +64,15 @@ const STEPS = [
   {
     tag: "Brand Match",
     title: "See brands that fit you",
-    body: "Your matches show what each brand pays creators, whether it's hiring now, and how well it fits your content. The best fit is pinned to the top.",
+    body: "Your matches show how well each brand fits your content, what it pays creators, whether it's hiring now, and the videos other creators made for it. The best fit is pinned to the top.",
     points: ["Pay ranges come from public sources.", "Switch between this week and this month."],
     img: "/screenshots/matches.webp",
-    alt: "Brand matches grid showing four brands with pay ranges, hiring status and fit scores",
-  },
-  {
-    tag: "Brand Match",
-    title: "Swipe to save or pass",
-    body: "Short on time? Flip to swipe view. Drag right to save a brand, left to pass, or use the arrow keys. Saved brands stay in your sidebar.",
-    points: ["Undo any swipe with Z.", "Open the full brand card any time."],
-    img: "/screenshots/swipe.webp",
-    alt: "Swipe view with a brand card being dragged right to save",
+    alt: "Brand matches grid showing four brands with creator videos, pay ranges, hiring status and fit scores",
   },
   {
     tag: "Brand Match",
     title: "Open a brand and draft a pitch",
-    body: "See why the brand fits you, what it pays and every source behind it. One click drafts a short, specific pitch email in your voice that you can edit and copy.",
+    body: "See why the brand fits you, what it pays, videos creators made for it and every source behind it. One click drafts a short, specific pitch email in your voice that you can edit and copy.",
     points: ["The pitch asks for their brief and rate card.", "Redraft until it sounds like you."],
     img: "/screenshots/pitch.webp",
     alt: "Brand detail page with a drafted pitch email open in a dialog",
@@ -91,7 +83,7 @@ const STEPS = [
     body: "Your Trust inbox scores each brand email from 0 to 100. Open one to see the five checks behind the score, and the sources behind each check.",
     points: ["Risky emails are flagged in red.", "“See the real brand” takes you to its real site."],
     img: "/screenshots/trust.webp",
-    alt: "Trust inbox showing a fake sponsor email scored 23 out of 100, marked Risky",
+    alt: "Trust inbox showing a fake sponsor email scored 30 out of 100, marked Risky",
   },
 ];
 
@@ -169,11 +161,11 @@ const PLANS = [
     popular: true,
     features: [
       "Unlimited Trust Score checks",
-      "Connect Gmail or Outlook: every brand email scored",
+      "Connect Gmail: every brand email scored (Outlook soon)",
       "Full Brand Match, last 7 or 30 days",
       "Pay ranges and hiring status for every brand",
       "Unlimited pitch drafts",
-      "Swipe view and saved brands",
+      "Creator videos and saved brands",
     ],
   },
   {
@@ -190,7 +182,7 @@ const PLANS = [
 
 const PLAN_TABLE: Array<[string, string, string, string]> = [
   ["Trust Score checks", "5 a month", "Unlimited", "Unlimited"],
-  ["Inbox connection", "Paste only", "Gmail or Outlook", "Shared inbox"],
+  ["Inbox connection", "Paste only", "Gmail (Outlook soon)", "Shared inbox"],
   ["Brand Match window", "30 days", "7 or 30 days", "7 or 30 days"],
   ["Brands per match", "Top 3", "All", "All"],
   ["Pitch drafts", "3 a month", "Unlimited", "Unlimited"],
@@ -361,7 +353,7 @@ export default function Landing() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/matches" className="hidden h-10 items-center px-3 text-sm font-medium text-ink-3 hover:text-ink xl:flex">
+            <Link href="/signup?mode=signin" className="hidden h-10 items-center px-3 text-sm font-medium text-ink-3 hover:text-ink xl:flex">
               Sign in
             </Link>
             <a
@@ -406,7 +398,7 @@ export default function Landing() {
           </div>
 
           <div className="relative mx-auto max-w-6xl px-6 pb-20">
-            <BrowserFrame src="/screenshots/matches.webp" alt="Vetted Brand matches screen with four matched brands, pay ranges and fit scores" url="vetted.app/matches" priority />
+            <BrowserFrame src="/screenshots/matches.webp" alt="Vetted Brand matches screen with four matched brands, creator videos, pay ranges and fit scores" url="vetted.app/matches" priority />
             {/* Floating Trust Score card */}
             <div className="absolute -bottom-2 left-2 hidden w-[340px] items-center gap-3 rounded-[22px] border border-[#F6D9D9] p-4 shadow-[0_20px_50px_rgba(24,24,27,0.18)] md:flex lg:-left-6" style={{ background: "radial-gradient(90% 70% at 30% 0%, rgba(229,72,77,0.12) 0%, rgba(255,255,255,0) 72%), #fff" }}>
               <div className="-mr-5 origin-left scale-[0.7]">
@@ -483,7 +475,7 @@ export default function Landing() {
               eyebrow="How to use it"
               title={
                 <>
-                  From sign-up to your first <b>safe deal</b> in six steps
+                  From sign-up to your first <b>safe deal</b> in five steps
                 </>
               }
               sub="Setup takes about two minutes. After that, matches refresh as you post and every brand email gets a score."
@@ -735,15 +727,16 @@ export default function Landing() {
 
       {/* ---------- Footer ---------- */}
       <footer className="border-t border-line bg-white">
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 md:grid-cols-[2fr_1fr_1fr_1fr]">
-          <div className="flex flex-col gap-3">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-12 grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
+          <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
             <Logo />
             <span className="max-w-xs text-sm leading-relaxed text-muted">Deals that fit. From people you trust. Brand Match and Trust Score for creators, powered by You.com.</span>
           </div>
           {[
             { h: "Product", links: [["Brand Match", "/matches"], ["Trust Score", "/inbox"], ["Check an email", "/inbox/check"], ["Mobile app", MOBILE_APP_URL], ["Web app", WEB_APP_PATH]] },
             { h: "Learn", links: [["How it works", "#how"], ["Who it's for", "#who"], ["Pricing", "#pricing"], ["FAQ", "#faq"]] },
-            { h: "Account", links: [["Sign up", "/signup"], ["Sign in", "/matches"]] },
+            { h: "Account", links: [["Sign up", "/signup"], ["Sign in", "/signup?mode=signin"]] },
+            { h: "Legal", links: [["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"]] },
           ].map((col) => (
             <div key={col.h} className="flex flex-col gap-2.5 text-sm">
               <span className="font-semibold">{col.h}</span>

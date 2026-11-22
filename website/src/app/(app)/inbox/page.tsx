@@ -14,8 +14,9 @@ const CHECKS = [
 ];
 
 export default function InboxHome() {
-  const { emails, trust } = useStore();
-  const count = (b: Band) => emails.filter((e) => trust[e.id]?.band === b).length;
+  const { account, emails, gmailEmails, trust } = useStore();
+  const list = account?.gmail.connected ? [...emails.filter((e) => e.id.startsWith("pasted-")), ...(gmailEmails ?? [])] : emails;
+  const count = (b: Band) => list.filter((e) => trust[e.id]?.band === b).length;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10 lg:px-10">
