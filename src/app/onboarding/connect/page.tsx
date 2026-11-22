@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Icon, PrimaryLink, Screen, Segmented, StepHeader } from "@/components/ui";
+import { Icon, PrimaryLink, Screen, StepHeader } from "@/components/ui";
 import { useStore } from "@/lib/store";
 
 const ACCOUNTS = [
@@ -56,15 +56,7 @@ export default function Connect() {
 
       <div className="flex flex-col gap-2.5">
         <span className="px-1 text-sm font-semibold">Brand activity</span>
-        <Segmented
-          full
-          value={profile.window}
-          onChange={(w) => setProfile({ window: w })}
-          options={[
-            { value: 7, label: "Last 7 days" },
-            { value: 30, label: "Last 30 days" },
-          ]}
-        />
+        <p className="m-0 px-1 text-[13px] leading-normal text-muted">Start with the last 7 days. You can expand to 30 days from your matches.</p>
       </div>
 
       <div className="flex flex-col gap-2 rounded-[20px] border border-line bg-white p-3.5">

@@ -34,6 +34,8 @@ Without `YDC_API_KEY` (or when discovery fails), the feed shows a saved sample r
 
 Brand Match combines three parallel Search calls in one shared extraction/ranking call, merges duplicate brand names and website domains while preserving their sources, and returns up to 20 supported brands. A failed search lane does not discard successful lanes. It returns fewer brands when evidence is insufficient. Fit is based on content relevance and stays stable when details arrive.
 
+New searches start with 7 days. The 30-day search runs only when selected and combines its discoveries with the cached live 7-day matches before deduplicating, sorting by content fit, and keeping up to 20. Switching back reuses the weekly cache. Starting a new search clears both windows; manual refresh reruns the selected window. Sample data is never mixed into live results. If monthly discovery fails, cached live weekly matches remain available with a note.
+
 `POST /api/brand-research` checks only the brand opened in the detail page. Completed checks are reused in the browser session; failed checks can be retried. Unchecked campaigns are labeled "Not checked", and sample runs never trigger live detail checks.
 
 The Inference Router needs purchased You.com credits. After a 402/403, Brand Match uses one structured Research call as its alternative. Other features use their existing rule-based or template fallbacks.

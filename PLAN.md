@@ -84,6 +84,8 @@ flowchart LR
 
 ### Brand Match pipeline (`POST /api/brand-match`)
 
+Start every new search with the 7-day window and retain its results in browser session storage. Request the 30-day window only when selected, merging its discoveries with cached live weekly matches before deduplicating and keeping the top 20 by content fit. Starting a new search clears both caches. Keep sample and live data separate.
+
 1. **Read the creator's content**: Extract each pasted post link (parallel). If none are given, use the niches picked in onboarding.
 2. **Profile**: the Inference Router turns the text into niche, topics, audience and follower band. Without an LLM, the picked niches stand in.
 3. **Find brands**: three Search calls in parallel with week/month freshness: sponsorships, creator programs, and adjacent product categories. Successful lanes are retained if another fails. When Router access is unavailable, one structured Research call provides alternative discovery.
