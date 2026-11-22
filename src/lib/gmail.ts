@@ -26,16 +26,21 @@ export function originOf(req: Request) {
 
 export const redirectUri = (req: Request) => `${originOf(req)}/api/gmail/callback`;
 
-export function authUrl(req: Request, state: string) {
+/** "signin": name and email only (no Google review needed). "gmail": adds read-only mail access. */
+export type OAuthMode = "signin" | "gmail";
+
+export const SIGNIN_SCOPES = ["openid", "email", "profile"];
+
+export function authUrl(req: Request, state: string, mode: OAuthMode = "gmail") {
   const p = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: redirectUri(req),
     response_type: "code",
-    scope: GMAIL_SCOPES.join(" "),
-    access_type: "offline",
-    include_granted_scopes: "true",
-    prompt: "consent",
+    scope: (mode === "signin" ? SIGNIN_SCOPES : GMAIL_SCOPES).join(" "),
     state,
+    ...(mode === "gmail"
+      ? { access_type: "offline", include_granted_scopes: "true", prompt: "consent" }
+      : { prompt: "select_account" }),
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
@@ -66,20 +71,30 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
   return data;
 }
 
+// The id_token is a JWT straight from Google's token endpoint (over TLS); read its claims.
+const idClaims = (t: TokenResponse): { email?: string; name?: string } =>
+  t.id_token ? JSON.parse(Buffer.from(t.id_token.split(".")[1], "base64url").toString()) : {};
+
 export async function exchangeCode(req: Request, code: string): Promise<GmailTokens> {
   const t = await tokenRequest({ code, grant_type: "authorization_code", redirect_uri: redirectUri(req) });
   // Google lets people untick individual permissions; without this one we can't read mail.
   if (t.scope && !t.scope.split(" ").includes("https://www.googleapis.com/auth/gmail.readonly")) {
     throw new MissingScopeError();
   }
-  // The id_token is a JWT straight from Google's token endpoint; read the email claim from it.
-  const claims = t.id_token ? JSON.parse(Buffer.from(t.id_token.split(".")[1], "base64url").toString()) : {};
   return {
-    email: claims.email ?? "",
+    email: idClaims(t).email ?? "",
     accessToken: t.access_token,
     refreshToken: t.refresh_token ?? null,
     expiresAt: Date.now() + (t.expires_in - 60) * 1000,
   };
+}
+
+/** "Continue with Google": returns the person's name and email. No tokens are kept. */
+export async function exchangeSignin(req: Request, code: string): Promise<{ name: string; email: string }> {
+  const t = await tokenRequest({ code, grant_type: "authorization_code", redirect_uri: redirectUri(req) });
+  const c = idClaims(t);
+  if (!c.email) throw new Error("Google didn't share an email address.");
+  return { name: (c.name ?? c.email.split("@")[0]).slice(0, 80), email: c.email.toLowerCase() };
 }
 
 /** Returns a valid access token, refreshing (and re-saving the cookie) when it has expired. */

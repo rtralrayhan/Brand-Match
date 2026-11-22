@@ -47,7 +47,7 @@ export default function Welcome() {
 
       <div className="flex flex-col items-center gap-2 px-[18px] pb-5 pt-2.5">
         <PrimaryLink href="/signup">Get started</PrimaryLink>
-        <Link href="/matches" className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
+        <Link href="/signup?mode=signin" className="flex h-11 items-center px-3 text-sm font-medium text-ink-3">
           I already have an account
         </Link>
         <div className="flex gap-4 text-xs text-muted">
