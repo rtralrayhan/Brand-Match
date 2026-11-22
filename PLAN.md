@@ -86,10 +86,10 @@ flowchart LR
 
 1. **Read the creator's content**: Extract each pasted post link (parallel). If none are given, use the niches picked in onboarding.
 2. **Profile**: the Inference Router turns the text into niche, topics, audience and follower band. Without an LLM, the picked niches stand in.
-3. **Find brands**: three Search calls in parallel with `freshness` week or month: `"<niche>" "sponsored by"`, `<niche> creator program`, `<niche> brand ambassador apply`.
-4. **Merge**: the Inference Router pulls brand names out of the result snippets, keeping the URLs that mention each one.
-5. **Spend and hiring now**: one Answer call per top brand (month freshness): "Is <brand> running creator campaigns now, and what does it pay creators?" A range with citations, or "No public pay data yet".
-6. **Fit score**: topic overlap + audience size match + how recently the brand hired creators.
+3. **Find brands**: three Search calls in parallel with week/month freshness: sponsorships, creator programs, and adjacent product categories. Successful lanes are retained if another fails. When Router access is unavailable, one structured Research call provides alternative discovery.
+4. **Merge and rank**: one shared Inference Router call identifies brands, assigns content-fit scores, and attaches supporting result indexes. Merge duplicate names/domains and their evidence before capping at 20 brands. Return fewer when evidence is insufficient.
+5. **Spend and hiring now**: return the feed without Answer calls. Opening a live brand calls `POST /api/brand-research` for that brand only. Cache completed details in the browser session, preserve discovery sources, distinguish unchecked/failed states, and allow retries. Sample brands never trigger live checks.
+6. **Fit score**: the shared model's content-fit score, clamped to 0–100. Fit and feed order stay stable when pay and campaign details arrive.
 
 ### Trust Score pipeline (`POST /api/trust-score`)
 

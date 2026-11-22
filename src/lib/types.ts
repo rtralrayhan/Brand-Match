@@ -25,10 +25,13 @@ export interface Brand {
   spendNote: string;
   hiring: string;
   live: boolean;
+  researchStatus: "unresearched" | "complete" | "failed";
   why: string[];
   website?: string;
   sources: Source[];
 }
+
+export type BrandResearch = Pick<Brand, "spend" | "spendNote" | "hiring" | "live" | "researchStatus" | "sources">;
 
 export interface CreatorProfile {
   niche: string;
