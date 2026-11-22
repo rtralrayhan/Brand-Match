@@ -18,7 +18,7 @@ export function useMatches() {
   return { ...store, window: w, result: store.matches[w] as MatchResult | undefined, flagged: flagged || 1 };
 }
 
-export function MatchesHeader({ subtitle, mode }: { view?: "list" | "swipe"; subtitle: React.ReactNode; mode?: MatchResult["mode"] }) {
+export function MatchesHeader({ subtitle, mode }: { subtitle: React.ReactNode; mode?: MatchResult["mode"] }) {
   const { restartSearch } = useStore();
 
   return (
@@ -33,20 +33,6 @@ export function MatchesHeader({ subtitle, mode }: { view?: "list" | "swipe"; sub
         <h1 className="m-0 text-[26px] font-semibold tracking-[-0.025em]">Brand matches</h1>
         <span className="text-sm text-muted">{subtitle}</span>
       </div>
-    </div>
-  );
-}
-
-export function ViewToggle({ view }: { view: "list" | "swipe" }) {
-  const cell = (on: boolean) => `flex h-9 w-11 items-center justify-center rounded-[10px] ${on ? "bg-white shadow-[0_1px_3px_rgba(24,24,27,0.10)]" : ""}`;
-  return (
-    <div role="group" aria-label="View" className="flex gap-1 rounded-[14px] bg-chip p-1">
-      <Link href="/matches" aria-label="List view" aria-current={view === "list" ? "page" : undefined} className={cell(view === "list")}>
-        {Icon.list({ color: view === "list" ? "#18181B" : "#6B6B74" })}
-      </Link>
-      <Link href="/matches/swipe" aria-label="Swipe view" aria-current={view === "swipe" ? "page" : undefined} className={cell(view === "swipe")}>
-        {Icon.cards({ color: view === "swipe" ? "#18181B" : "#6B6B74" })}
-      </Link>
     </div>
   );
 }
